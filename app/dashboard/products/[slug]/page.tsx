@@ -3,10 +3,25 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getProduct, updateProduct, deleteProduct, regenerateShareLink, parseJson, statusLabel, statusColor, fmtDate, Product, ApiError } from '@/lib/api';
+import { getProduct, updateProduct, deleteProduct, regenerateShareLink, getCompliance, parseJson, statusLabel, statusColor, fmtDate, Product, ComplianceResult, ApiError } from '@/lib/api';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
-const TABS = ['Perustiedot', 'Listat', 'Käännökset', 'Dokumentit', 'Jakaminen'] as const;
+const TABS = ['Perustiedot', 'Listat', 'Käännökset', 'Dokumentit', 'Jakaminen', 'EU-vaatimukset'] as const;
+
+const CATEGORIES = [
+  { id: 'cat_textiles',    label: 'Tekstiilit ja vaatteet' },
+  { id: 'cat_electronics', label: 'Elektroniikka' },
+  { id: 'cat_batteries',   label: 'Akut ja paristot' },
+  { id: 'cat_furniture',   label: 'Huonekalut' },
+  { id: 'cat_other',       label: 'Muu tuoteryhmä' },
+];
+const MARKETS = ['EU','FI','DE','FR','SE','EE','LV','LT','PL'];
+
+function scoreColor(score: number) {
+  if (score >= 90) return 'var(--c-ok)';
+  if (score >= 70) return '#d97706';
+  return 'var(--c-warn)';
+}
 type Tab = typeof TABS[number];
 
 // ── Shared input styles ───────────────────────────────────────────────────────
@@ -53,11 +68,14 @@ export default function ProductPage() {
   const [shareUrl, setShareUrl] = useState('');
 
   // Form state
-  const [basic, setBasic] = useState({ product_name: '', brand_name: '', manufacturer_name: '', manufacturer_email: '', manufacturer_address: '', responsible_operator_name: '', responsible_operator_email: '', responsible_operator_address: '', sku: '', gtin: '', batch_number: '', serial_number: '', product_type: '', status: 'draft' });
+  const [basic, setBasic] = useState({ product_name: '', brand_name: '', manufacturer_name: '', manufacturer_email: '', manufacturer_address: '', responsible_operator_name: '', responsible_operator_email: '', responsible_operator_address: '', sku: '', gtin: '', batch_number: '', serial_number: '', product_type: '', status: 'draft', compliance_status: 'not_started', category_id: '', target_markets: ['EU'] as string[] });
   const [lists, setLists] = useState({ materials: [] as string[], substances: [] as string[], care_instructions: [] as string[], repair_instructions: [] as string[], recycling_instructions: [] as string[], safety_notes: [] as string[] });
   const [activeLang, setActiveLang] = useState('en');
   const [translations, setTranslations] = useState<Record<string, Record<string, unknown>>>({});
   const [docs, setDocs] = useState<{ name: string; url: string }[]>([]);
+  const [compliance, setCompliance] = useState<ComplianceResult | null>(null);
+  const [complianceLoading, setComplianceLoading] = useState(false);
+  const [complianceError, setComplianceError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const token = await getToken();
@@ -66,7 +84,7 @@ export default function ProductPage() {
       const p = await getProduct(token, slug);
       setProduct(p);
       setShareUrl(`${window.location.origin.replace(':3000', '')}/owner/${p.owner_token}`);
-      setBasic({ product_name: p.product_name ?? '', brand_name: p.brand_name ?? '', manufacturer_name: p.manufacturer_name ?? '', manufacturer_email: p.manufacturer_email ?? '', manufacturer_address: p.manufacturer_address ?? '', responsible_operator_name: p.responsible_operator_name ?? '', responsible_operator_email: p.responsible_operator_email ?? '', responsible_operator_address: p.responsible_operator_address ?? '', sku: p.sku ?? '', gtin: p.gtin ?? '', batch_number: p.batch_number ?? '', serial_number: p.serial_number ?? '', product_type: p.product_type ?? '', status: p.status });
+      setBasic({ product_name: p.product_name ?? '', brand_name: p.brand_name ?? '', manufacturer_name: p.manufacturer_name ?? '', manufacturer_email: p.manufacturer_email ?? '', manufacturer_address: p.manufacturer_address ?? '', responsible_operator_name: p.responsible_operator_name ?? '', responsible_operator_email: p.responsible_operator_email ?? '', responsible_operator_address: p.responsible_operator_address ?? '', sku: p.sku ?? '', gtin: p.gtin ?? '', batch_number: p.batch_number ?? '', serial_number: p.serial_number ?? '', product_type: p.product_type ?? '', status: p.status, compliance_status: p.compliance_status ?? 'not_started', category_id: p.category_id ?? '', target_markets: parseJson(p.target_markets_json, ['EU']) });
       setLists({ materials: parseJson(p.materials_json, []), substances: parseJson(p.substances_json, []), care_instructions: parseJson(p.care_instructions_json, []), repair_instructions: parseJson(p.repair_instructions_json, []), recycling_instructions: parseJson(p.recycling_instructions_json, []), safety_notes: parseJson(p.safety_notes_json, []) });
       setTranslations(parseJson(p.translations_json, {}));
       setDocs(parseJson(p.compliance_documents_json, []));
@@ -74,6 +92,18 @@ export default function ProductPage() {
   }, [getToken, slug]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function fetchCompliance() {
+    if (!product) return;
+    setComplianceLoading(true);
+    setComplianceError(null);
+    try {
+      const data = await getCompliance(product.product_uid);
+      setCompliance(data);
+    } catch (e) {
+      setComplianceError(e instanceof ApiError ? `Tarkistus epäonnistui (virhe ${e.status})` : 'Tarkistus epäonnistui. Yritä uudelleen.');
+    } finally { setComplianceLoading(false); }
+  }
 
   async function save(body: Record<string, unknown>) {
     setSaving(true); setMsg(null);
@@ -173,7 +203,7 @@ export default function ProductPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '2px', borderBottom: '1px solid var(--c-border)', marginBottom: '24px' }}>
         {TABS.map(t => (
-          <button key={t} onClick={() => { setTab(t); setMsg(null); }}
+          <button key={t} onClick={() => { setTab(t); setMsg(null); if (t === 'EU-vaatimukset') fetchCompliance(); }}
             style={{ fontSize: '13px', fontWeight: 500, padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', borderBottom: tab === t ? '2px solid var(--c-accent)' : '2px solid transparent', color: tab === t ? 'var(--c-accent)' : 'var(--c-text-2)', marginBottom: '-1px' }}>
             {t}
           </button>
@@ -209,14 +239,50 @@ export default function ProductPage() {
             </div>
             <div>
               <Card title="Tila">
-                <Field label="Tila">
+                <Field label="Julkaisutila">
                   <select style={inp} value={basic.status} onChange={setBasicField('status')}>
                     <option value="draft">Luonnos</option>
                     <option value="active">Julkaistu</option>
                     <option value="archived">Arkistoitu</option>
                   </select>
                 </Field>
+                <Field label="Vaatimustenmukaisuus (EU ESPR)">
+                  <select style={inp} value={basic.compliance_status} onChange={setBasicField('compliance_status')}>
+                    <option value="not_started">Ei aloitettu</option>
+                    <option value="in_progress">Kesken</option>
+                    <option value="complete">Tiedot täydelliset</option>
+                    <option value="verified">Varmennettu</option>
+                  </select>
+                </Field>
               </Card>
+              <Card title="EU-luokitus">
+                <Field label="Tuoteluokka">
+                  <select style={inp} value={basic.category_id} onChange={setBasicField('category_id')}>
+                    <option value="">Valitse luokka...</option>
+                    {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Kohdemarkkinat">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', paddingTop: '4px' }}>
+                    {MARKETS.map(m => (
+                      <label key={m} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--c-text-2)', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={basic.target_markets.includes(m)}
+                          onChange={e => setBasic(b => ({
+                            ...b,
+                            target_markets: e.target.checked
+                              ? [...b.target_markets, m]
+                              : b.target_markets.filter(x => x !== m),
+                          }))}
+                        />
+                        {m}
+                      </label>
+                    ))}
+                  </div>
+                </Field>
+              </Card>
+
               <Card title="Tunnisteet">
                 <div style={row}>
                   <div style={lbl}>product_uid</div>
@@ -336,6 +402,150 @@ export default function ProductPage() {
           </Card>
 
           {msg && <p style={{ fontSize: '13px', color: msg.type === 'ok' ? 'var(--c-ok)' : 'var(--c-warn)', marginTop: '8px' }}>{msg.text}</p>}
+        </div>
+      )}
+
+      {/* ── EU-vaatimukset ── */}
+      {tab === 'EU-vaatimukset' && (
+        <div>
+          {complianceLoading && (
+            <p style={{ color: 'var(--c-text-3)', fontSize: '14px' }}>Tarkistetaan vaatimuksia...</p>
+          )}
+
+          {!complianceLoading && !compliance && (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              {complianceError && (
+                <p style={{ fontSize: '13px', color: 'var(--c-warn)', marginBottom: '12px', background: 'rgba(196,40,42,.06)', border: '1px solid rgba(196,40,42,.2)', borderRadius: '8px', padding: '10px 16px', display: 'inline-block' }}>
+                  {complianceError}
+                </p>
+              )}
+              {!complianceError && (
+                <p style={{ fontSize: '14px', color: 'var(--c-text-3)', marginBottom: '16px' }}>Vaatimustenmukaisuustarkistus ei latautunut.</p>
+              )}
+              <br />
+              <button onClick={fetchCompliance} style={{ fontSize: '13px', padding: '8px 20px', background: 'var(--c-accent)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                {complianceError ? 'Yritä uudelleen' : 'Lataa tarkistus'}
+              </button>
+            </div>
+          )}
+
+          {compliance && (
+            <div>
+              {/* Score header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '12px', padding: '20px 24px' }}>
+                <div style={{ fontSize: '52px', fontWeight: 700, lineHeight: 1, color: scoreColor(compliance.score) }}>
+                  {compliance.score}
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '6px' }}>Pistemäärä / 100</div>
+                  <span style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '999px', border: '1px solid', color: compliance.status === 'complete' ? 'var(--c-ok)' : 'var(--c-warn)', borderColor: compliance.status === 'complete' ? 'var(--c-ok)' : 'var(--c-warn)', background: compliance.status === 'complete' ? 'rgba(34,197,94,.08)' : 'rgba(196,40,42,.06)' }}>
+                    {compliance.status === 'complete' ? 'Valmis' : 'Puutteellinen'}
+                  </span>
+                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '8px' }}>
+                    {compliance.category
+                      ? `Luokka: ${CATEGORIES.find(c => c.id === `cat_${compliance.category?.toLowerCase()}`)?.label ?? compliance.category}`
+                      : 'Luokka: ei asetettu'}
+                    {' · '}
+                    Markkinat: {compliance.target_markets.join(', ')}
+                  </div>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                  <button onClick={fetchCompliance} style={{ fontSize: '12px', padding: '6px 12px', border: '1px solid var(--c-border)', borderRadius: '6px', background: 'var(--c-surface-2)', cursor: 'pointer', color: 'var(--c-text-2)' }}>
+                    ↺ Päivitä
+                  </button>
+                  <div style={{ fontSize: '10px', color: 'var(--c-text-3)', marginTop: '4px', textAlign: 'right' }}>
+                    {compliance.cached ? 'välimuistista' : 'juuri laskettu'} · v{compliance.product_version}
+                  </div>
+                </div>
+              </div>
+
+              {/* verification_suggested banner */}
+              {compliance.verification_suggested && (
+                <div style={{ background: 'rgba(34,197,94,.08)', border: '1px solid var(--c-ok)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: 'var(--c-ok)' }}>
+                  Kaikki pakolliset vaatimukset täytetty ja pistemäärä ≥ 95. Admin voi merkitä tuotteen <strong>varmennetuksi</strong> Tila-kentästä.
+                </div>
+              )}
+
+              {/* No category warning */}
+              {!compliance.category && (
+                <div style={{ background: 'var(--c-accent-dim)', border: '1px solid rgba(10,109,194,.18)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: 'var(--c-accent)' }}>
+                  Tuoteluokka ei ole asetettu — vain yleiset GPSR-säännöt ovat aktiivisia. Aseta luokka Perustiedot-välilehdellä aktivoidaksesi kategoriasäännöt.
+                </div>
+              )}
+
+              {/* Missing (errors) */}
+              {compliance.missing.length > 0 && (
+                <Card title={`Puuttuvat tiedot — pakollinen (${compliance.missing.length})`}>
+                  {compliance.missing.map(m => (
+                    <div key={m.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                      <span style={{ color: 'var(--c-warn)', fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>✕</span>
+                      <div>
+                        <div style={{ fontSize: '13px', color: 'var(--c-text-1)' }}>{m.message_fi}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '2px', fontFamily: 'monospace' }}>{m.rule_code} · {m.regulation}</div>
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              )}
+
+              {/* Warnings */}
+              {compliance.warnings.length > 0 && (
+                <Card title={`Varoitukset — suositeltava (${compliance.warnings.length})`}>
+                  {compliance.warnings.map(w => (
+                    <div key={w.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                      <span style={{ color: '#d97706', fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>⚠</span>
+                      <div>
+                        <div style={{ fontSize: '13px', color: 'var(--c-text-1)' }}>{w.message_fi}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '2px', fontFamily: 'monospace' }}>{w.rule_code} · {w.regulation}</div>
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              )}
+
+              {/* Info */}
+              {compliance.info.length > 0 && (
+                <Card title={`Huomioita (${compliance.info.length})`}>
+                  {compliance.info.map(i => (
+                    <div key={i.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                      <span style={{ color: 'var(--c-accent)', fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>ℹ</span>
+                      <div>
+                        <div style={{ fontSize: '13px', color: 'var(--c-text-1)' }}>{i.message_fi}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '2px', fontFamily: 'monospace' }}>{i.rule_code} · {i.regulation}</div>
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              )}
+
+              {/* Passed */}
+              {compliance.passed.length > 0 && (
+                <Card title={`Läpäistyt säännöt (${compliance.passed.length})`}>
+                  <div style={{ padding: '10px 16px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {compliance.passed.map(p => (
+                      <span key={p.rule_code} style={{ fontSize: '11px', fontFamily: 'monospace', padding: '2px 8px', borderRadius: '4px', background: 'rgba(34,197,94,.08)', color: 'var(--c-ok)', border: '1px solid rgba(34,197,94,.2)' }}>
+                        {p.rule_code}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Regulations applied */}
+              {compliance.regulations_applied.length > 0 && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '8px' }}>Sovelletut asetukset</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {compliance.regulations_applied.map(r => (
+                      <span key={r.code} style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', border: '1px solid var(--c-border)', color: r.status === 'draft' ? '#d97706' : 'var(--c-text-2)', background: 'var(--c-surface)' }}>
+                        {r.code} {r.version}{r.status === 'draft' ? ' (luonnos)' : ''}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

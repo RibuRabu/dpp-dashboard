@@ -7,13 +7,32 @@ export class ApiError extends Error {
 }
 
 async function req<T>(token: string | null, path: string, init: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {};
+  if (!(init.body instanceof FormData)) headers['Content-Type'] = 'application/json';
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${API}${path}`, { ...init, headers: { ...headers, ...(init.headers as Record<string, string> || {}) } });
   const data = await res.json();
   if (!res.ok) throw new ApiError(res.status, data);
   return data as T;
+}
+
+export function apiErrMsg(e: unknown): string {
+  if (e instanceof ApiError) {
+    const body = e.body as { error?: string; limit?: number };
+    const map: Record<string, string> = {
+      no_active_organization: 'Ei aktiivista organisaatiota. Valitse organisaatio navipalkin vaihtajasta.',
+      tenant_not_found: 'Organisaatiota ei löydy järjestelmästä. Ota yhteyttä tukeen.',
+      product_limit_reached: `Tuoteraja täynnä (${body.limit ?? '?'} tuotetta). Päivitä plan asetuksista.`,
+      product_name_required: 'Tuotteen nimi on pakollinen.',
+      unauthorized: 'Kirjautuminen vaaditaan.',
+      not_found: 'Tuotetta ei löydy.',
+      already_claimed: 'Tuote on jo yhdistetty toiseen tenantiin.',
+      invalid_compliance_status: 'Virheellinen vaatimustenmukaisuusstatus.',
+    };
+    return map[body.error ?? ''] ?? `Virhe ${e.status}: ${JSON.stringify(e.body)}`;
+  }
+  return String(e);
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -30,6 +49,7 @@ export interface ProductSummary {
   created_at: string;
   updated_at: string;
   published_at: string | null;
+  owner_token?: string;
 }
 
 export interface Product extends ProductSummary {
@@ -59,6 +79,36 @@ export interface Product extends ProductSummary {
   translations_json: string;
   data_carrier_url: string;
   identifier_level: string;
+  compliance_status: string;
+  category_id: string | null;
+  target_markets_json: string;
+}
+
+export interface ComplianceIssue {
+  rule_code: string;
+  regulation: string;
+  severity: string;
+  field: string | null;
+  message_en: string;
+  message_fi: string;
+}
+
+export interface ComplianceResult {
+  product_uid: string;
+  computed_at: string;
+  product_version: number;
+  cached: boolean;
+  status: 'incomplete' | 'complete';
+  score: number;
+  verification_suggested: boolean;
+  category: string | null;
+  target_markets: string[];
+  missing: ComplianceIssue[];
+  warnings: ComplianceIssue[];
+  info: ComplianceIssue[];
+  passed: { rule_code: string; regulation: string }[];
+  rules_applied: string[];
+  regulations_applied: { code: string; name: string; version: string; status: string }[];
 }
 
 export interface Tenant {
@@ -114,6 +164,13 @@ export async function claimProduct(token: string, ownerToken: string): Promise<{
   return req(token, `/api/tenant/claim/${ownerToken}`, { method: 'POST' });
 }
 
+export async function getCompliance(productUid: string): Promise<ComplianceResult> {
+  const res = await fetch(`${API}/api/v1/passport/${productUid}/compliance`);
+  const data = await res.json();
+  if (!res.ok) throw new ApiError(res.status, data);
+  return data as ComplianceResult;
+}
+
 // ── Platform admin API ─────────────────────────────────────────────────────
 
 export async function listTenants(token: string, offset = 0): Promise<{ tenants: Tenant[]; offset: number }> {
@@ -135,6 +192,14 @@ export async function listUnclaimed(token: string, email?: string): Promise<{ pr
 
 export async function adminClaimProduct(token: string, tenantId: string, slug: string): Promise<void> {
   await req(token, `/api/admin/tenant/${tenantId}/product/${slug}/claim`, { method: 'POST' });
+}
+
+export async function adminCreateProductForTenant(
+  token: string,
+  tenantId: string,
+  body: { product_name: string; product_type?: string }
+): Promise<{ id: string; product_uid: string; public_slug: string; owner_token: string; passport_uid: string }> {
+  return req(token, `/api/admin/tenant/${tenantId}/product`, { method: 'POST', body: JSON.stringify(body) });
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
