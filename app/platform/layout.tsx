@@ -7,6 +7,7 @@ const navLinks = [
   { href: '/platform', label: 'Yleiskatsaus', exact: true },
   { href: '/platform/tenants', label: 'Tenantit' },
   { href: '/platform/products/unclaimed', label: 'Lunastamatta' },
+  { href: '/platform/billing', label: 'Laskutus' },
 ];
 
 export default async function PlatformLayout({ children }: { children: React.ReactNode }) {

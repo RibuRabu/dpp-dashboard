@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -7,6 +7,17 @@ import { getProduct, updateProduct, deleteProduct, regenerateShareLink, getCompl
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 const TABS = ['Perustiedot', 'Listat', 'Käännökset', 'Dokumentit', 'Jakaminen', 'EU-vaatimukset'] as const;
+
+const FIELD_TAB: Record<string, typeof TABS[number]> = {
+  product_name: 'Perustiedot', brand_name: 'Perustiedot', product_type: 'Perustiedot',
+  manufacturer_name: 'Perustiedot', manufacturer_email: 'Perustiedot', manufacturer_address: 'Perustiedot',
+  responsible_operator_name: 'Perustiedot', responsible_operator_email: 'Perustiedot', responsible_operator_address: 'Perustiedot',
+  category_id: 'Perustiedot', target_markets_json: 'Perustiedot',
+  materials_json: 'Listat', substances_json: 'Listat', care_instructions_json: 'Listat',
+  repair_instructions_json: 'Listat', recycling_instructions_json: 'Listat', safety_notes_json: 'Listat',
+  compliance_documents_json: 'Dokumentit',
+  translations_json: 'Käännökset',
+};
 
 const CATEGORIES = [
   { id: 'cat_textiles',    label: 'Tekstiilit ja vaatteet' },
@@ -76,6 +87,8 @@ export default function ProductPage() {
   const [compliance, setCompliance] = useState<ComplianceResult | null>(null);
   const [complianceLoading, setComplianceLoading] = useState(false);
   const [complianceError, setComplianceError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const dirtyRef = useRef(false);
 
   const load = useCallback(async () => {
     const token = await getToken();
@@ -92,6 +105,19 @@ export default function ProductPage() {
   }, [getToken, slug]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
+
+  function markDirty() { dirtyRef.current = true; setDirty(true); }
+  function clearDirty() { dirtyRef.current = false; setDirty(false); }
 
   async function fetchCompliance() {
     if (!product) return;
@@ -112,7 +138,9 @@ export default function ProductPage() {
       if (!token) throw new Error('Ei kirjautumista');
       const updated = await updateProduct(token, slug, body);
       setProduct(updated);
+      clearDirty();
       setMsg({ type: 'ok', text: 'Tallennettu' });
+      if (compliance) fetchCompliance();
     } catch (e) {
       setMsg({ type: 'err', text: e instanceof ApiError ? JSON.stringify(e.body) : String(e) });
     } finally { setSaving(false); }
@@ -172,10 +200,10 @@ export default function ProductPage() {
   if (loading) return <div style={{ color: 'var(--c-text-3)', fontSize: '14px', padding: '40px' }}>Ladataan...</div>;
   if (!product) return <div style={{ color: 'var(--c-warn)', fontSize: '14px', padding: '40px' }}>Tuotetta ei löytynyt.</div>;
 
-  const setBasicField = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setBasic(b => ({ ...b, [k]: e.target.value }));
+  const setBasicField = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { markDirty(); setBasic(b => ({ ...b, [k]: e.target.value })); };
 
   const transFor = (lang: string): Record<string, unknown> => translations[lang] || {};
-  const setTrans = (lang: string, key: string, val: unknown) => setTranslations(t => ({ ...t, [lang]: { ...(t[lang] || {}), [key]: val } }));
+  const setTrans = (lang: string, key: string, val: unknown) => { markDirty(); setTranslations(t => ({ ...t, [lang]: { ...(t[lang] || {}), [key]: val } })); };
 
   const LANGS = [{ code: 'en', label: 'English' }, { code: 'sv', label: 'Svenska' }, { code: 'de', label: 'Deutsch' }, { code: 'fr', label: 'Français' }];
 
@@ -201,20 +229,42 @@ export default function ProductPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '2px', borderBottom: '1px solid var(--c-border)', marginBottom: '24px' }}>
+      <div
+        role="tablist"
+        aria-label="Tuotteen osiot"
+        style={{ display: 'flex', gap: '2px', borderBottom: '1px solid var(--c-border)', marginBottom: '24px' }}
+        onKeyDown={e => {
+          const idx = TABS.indexOf(tab);
+          if (e.key === 'ArrowRight') { const next = TABS[(idx + 1) % TABS.length]; setTab(next); setMsg(null); if (next === 'EU-vaatimukset') fetchCompliance(); }
+          else if (e.key === 'ArrowLeft') { const prev = TABS[(idx - 1 + TABS.length) % TABS.length]; setTab(prev); setMsg(null); if (prev === 'EU-vaatimukset') fetchCompliance(); }
+          else if (e.key === 'Home') { setTab(TABS[0]); setMsg(null); }
+          else if (e.key === 'End') { const last = TABS[TABS.length - 1]; setTab(last); setMsg(null); if (last === 'EU-vaatimukset') fetchCompliance(); }
+        }}
+      >
         {TABS.map(t => (
-          <button key={t} onClick={() => { setTab(t); setMsg(null); if (t === 'EU-vaatimukset') fetchCompliance(); }}
+          <button key={t}
+            role="tab"
+            aria-selected={tab === t}
+            aria-controls={`tabpanel-${t}`}
+            id={`tab-${t}`}
+            tabIndex={tab === t ? 0 : -1}
+            onClick={() => { setTab(t); setMsg(null); if (t === 'EU-vaatimukset') fetchCompliance(); }}
             style={{ fontSize: '13px', fontWeight: 500, padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', borderBottom: tab === t ? '2px solid var(--c-accent)' : '2px solid transparent', color: tab === t ? 'var(--c-accent)' : 'var(--c-text-2)', marginBottom: '-1px' }}>
             {t}
           </button>
         ))}
       </div>
 
+      {dirty && !saving && (
+        <div style={{ fontSize: '12px', color: '#d97706', background: 'rgba(217,119,6,.07)', border: '1px solid rgba(217,119,6,.25)', borderRadius: '6px', padding: '7px 12px', marginBottom: '12px' }}>
+          Tallentamattomia muutoksia — muista tallentaa ennen poistumista.
+        </div>
+      )}
       {msg && <p style={{ fontSize: '13px', color: msg.type === 'ok' ? 'var(--c-ok)' : 'var(--c-warn)', marginBottom: '16px' }}>{msg.text}</p>}
 
       {/* ── Perustiedot ── */}
       {tab === 'Perustiedot' && (
-        <form onSubmit={saveBasic}>
+        <form role="tabpanel" id="tabpanel-Perustiedot" aria-labelledby="tab-Perustiedot" onSubmit={saveBasic}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
               <Card title="Tuotetiedot">
@@ -269,12 +319,12 @@ export default function ProductPage() {
                         <input
                           type="checkbox"
                           checked={basic.target_markets.includes(m)}
-                          onChange={e => setBasic(b => ({
+                          onChange={e => { markDirty(); setBasic(b => ({
                             ...b,
                             target_markets: e.target.checked
                               ? [...b.target_markets, m]
                               : b.target_markets.filter(x => x !== m),
-                          }))}
+                          })); }}
                         />
                         {m}
                       </label>
@@ -311,12 +361,12 @@ export default function ProductPage() {
 
       {/* ── Listat ── */}
       {tab === 'Listat' && (
-        <form onSubmit={saveLists}>
+        <form role="tabpanel" id="tabpanel-Listat" aria-labelledby="tab-Listat" onSubmit={saveLists}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {([['Materiaalit', 'materials', 'esim. 97% merinovilla'], ['Aineet / yhdisteet', 'substances', 'esim. REACH-yhteensopivat väriaineet'], ['Hoito-ohjeet', 'care_instructions', 'esim. Pese 30°C villaohjelma'], ['Korjausohjeet', 'repair_instructions', 'esim. Käytä villaneulan korjaussarjaa'], ['Kierrätysohjeet', 'recycling_instructions', 'esim. Toimita tekstiilikeräykseen'], ['Turvallisuustiedot', 'safety_notes', 'esim. Soveltuu sensitiiviselle iholle']] as [string, keyof typeof lists, string][]).map(([label, key, ph]) => (
               <Card key={key} title={label}>
                 <div style={{ padding: '12px 16px' }}>
-                  <ListEditor value={lists[key]} onChange={v => setLists(l => ({ ...l, [key]: v }))} placeholder={ph} />
+                  <ListEditor value={lists[key]} onChange={v => { markDirty(); setLists(l => ({ ...l, [key]: v })); }} placeholder={ph} />
                 </div>
               </Card>
             ))}
@@ -329,7 +379,7 @@ export default function ProductPage() {
 
       {/* ── Käännökset ── */}
       {tab === 'Käännökset' && (
-        <form onSubmit={saveTranslations}>
+        <form role="tabpanel" id="tabpanel-Käännökset" aria-labelledby="tab-Käännökset" onSubmit={saveTranslations}>
           <div className="flex gap-2 mb-4">
             {LANGS.map(l => (
               <button key={l.code} type="button" onClick={() => setActiveLang(l.code)}
@@ -356,7 +406,7 @@ export default function ProductPage() {
 
       {/* ── Dokumentit ── */}
       {tab === 'Dokumentit' && (
-        <div>
+        <div role="tabpanel" id="tabpanel-Dokumentit" aria-labelledby="tab-Dokumentit">
           <Card title="Tiedostot">
             {docs.length === 0 && <div style={{ padding: '16px', fontSize: '13px', color: 'var(--c-text-3)' }}>Ei tiedostoja.</div>}
             {docs.map((d, i) => (
@@ -376,7 +426,7 @@ export default function ProductPage() {
 
       {/* ── Jakaminen ── */}
       {tab === 'Jakaminen' && (
-        <div>
+        <div role="tabpanel" id="tabpanel-Jakaminen" aria-labelledby="tab-Jakaminen">
           <Card title="Julkinen linkki">
             <div style={{ padding: '16px' }}>
               <p style={{ fontSize: '13px', color: 'var(--c-text-2)', marginBottom: '10px' }}>Tämä linkki on stabiili — QR-koodit osoittavat tähän.</p>
@@ -407,7 +457,7 @@ export default function ProductPage() {
 
       {/* ── EU-vaatimukset ── */}
       {tab === 'EU-vaatimukset' && (
-        <div>
+        <div role="tabpanel" id="tabpanel-EU-vaatimukset" aria-labelledby="tab-EU-vaatimukset">
           {complianceLoading && (
             <p style={{ color: 'var(--c-text-3)', fontSize: '14px' }}>Tarkistetaan vaatimuksia...</p>
           )}
@@ -477,12 +527,17 @@ export default function ProductPage() {
               {compliance.missing.length > 0 && (
                 <Card title={`Puuttuvat tiedot — pakollinen (${compliance.missing.length})`}>
                   {compliance.missing.map(m => (
-                    <div key={m.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                      <span style={{ color: 'var(--c-warn)', fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>✕</span>
-                      <div>
+                    <div key={m.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <span style={{ color: 'var(--c-warn)', fontSize: '12px', flexShrink: 0 }}>✕</span>
+                      <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '13px', color: 'var(--c-text-1)' }}>{m.message_fi}</div>
                         <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '2px', fontFamily: 'monospace' }}>{m.rule_code} · {m.regulation}</div>
                       </div>
+                      {m.field && FIELD_TAB[m.field] && (
+                        <button onClick={() => { setTab(FIELD_TAB[m.field!]); setMsg(null); window.scrollTo(0, 0); }} style={{ fontSize: '12px', color: 'var(--c-accent)', background: 'none', border: '1px solid var(--c-border)', borderRadius: '5px', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          Korjaa →
+                        </button>
+                      )}
                     </div>
                   ))}
                 </Card>
@@ -492,12 +547,17 @@ export default function ProductPage() {
               {compliance.warnings.length > 0 && (
                 <Card title={`Varoitukset — suositeltava (${compliance.warnings.length})`}>
                   {compliance.warnings.map(w => (
-                    <div key={w.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#d97706', fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>⚠</span>
-                      <div>
+                    <div key={w.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <span style={{ color: '#d97706', fontSize: '12px', flexShrink: 0 }}>⚠</span>
+                      <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '13px', color: 'var(--c-text-1)' }}>{w.message_fi}</div>
                         <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '2px', fontFamily: 'monospace' }}>{w.rule_code} · {w.regulation}</div>
                       </div>
+                      {w.field && FIELD_TAB[w.field] && (
+                        <button onClick={() => { setTab(FIELD_TAB[w.field!]); setMsg(null); window.scrollTo(0, 0); }} style={{ fontSize: '12px', color: '#d97706', background: 'none', border: '1px solid var(--c-border)', borderRadius: '5px', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          Korjaa →
+                        </button>
+                      )}
                     </div>
                   ))}
                 </Card>

@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
-import { listProducts, statusLabel, statusColor, fmtDate } from '@/lib/api';
+import { listProducts, statusLabel, statusColor, fmtDate, ProductSummary, ApiError } from '@/lib/api';
 import { CreateOrganization } from '@clerk/nextjs';
 
 export default async function ProductsPage() {
@@ -18,21 +18,54 @@ export default async function ProductsPage() {
   }
 
   const token = await getToken();
-  const products = token ? await listProducts(token).catch(() => []) : [];
+  let products: ProductSummary[] = [];
+  let tenantSuspended = false;
+  let fetchError: string | null = null;
+  try {
+    if (token) products = await listProducts(token);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 403) {
+      tenantSuspended = true;
+    } else if (e instanceof ApiError) {
+      fetchError = `Tuotteiden lataus epäonnistui (virhe ${e.status}). Yritä päivittää sivu.`;
+    } else {
+      fetchError = 'Yhteysvirhe — tarkista verkkoyhteys ja päivitä sivu.';
+    }
+  }
 
   return (
     <div>
+      {tenantSuspended && (
+        <div style={{ background: 'rgba(196,40,42,.06)', border: '1px solid rgba(196,40,42,.25)', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '16px', flexShrink: 0 }}>⚠</span>
+          <div>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-warn)', marginBottom: '4px' }}>Tili jäädytetty</p>
+            <p style={{ fontSize: '13px', color: 'var(--c-warn)' }}>
+              Tuotteiden luonti on estetty. Tarkista tilisi tila{' '}
+              <Link href="/dashboard/settings" style={{ color: 'var(--c-warn)', fontWeight: 600 }}>asetuksista</Link>.
+            </p>
+          </div>
+        </div>
+      )}
+      {fetchError && (
+        <div style={{ background: 'rgba(196,40,42,.06)', border: '1px solid rgba(196,40,42,.25)', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '16px', flexShrink: 0 }}>⚠</span>
+          <p style={{ fontSize: '13px', color: 'var(--c-warn)' }}>{fetchError}</p>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--c-text-1)' }}>Tuotteet</h1>
           <p style={{ fontSize: '13px', color: 'var(--c-text-3)', marginTop: '2px' }}>{products.length} tuotetta</p>
         </div>
-        <Link
-          href="/dashboard/products/new"
-          style={{ background: 'var(--c-accent)', color: '#fff', fontSize: '13px', fontWeight: 500, padding: '8px 16px', borderRadius: '8px', textDecoration: 'none' }}
-        >
-          + Uusi tuote
-        </Link>
+        {!tenantSuspended && (
+          <Link
+            href="/dashboard/products/new"
+            style={{ background: 'var(--c-accent)', color: '#fff', fontSize: '13px', fontWeight: 500, padding: '8px 16px', borderRadius: '8px', textDecoration: 'none' }}
+          >
+            + Uusi tuote
+          </Link>
+        )}
       </div>
 
       {products.length === 0 ? (

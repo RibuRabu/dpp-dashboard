@@ -6,8 +6,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Digitaalinen tuotepassi',
-  description: 'DPP hallintapaneeli',
+  title: 'Digitaalinen tuotepassi – Tuotetiedot, dokumentit ja EU-vaatimusten hallinta',
+  description: 'Yksi paikka tuotetiedoille, dokumenteille ja EU-vaatimusten hallintaan. Sopii koruille, design-tuotteille, tekstiileille ja käsityötuotteille.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

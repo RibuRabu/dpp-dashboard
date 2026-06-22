@@ -125,6 +125,31 @@ export interface Tenant {
   stripe_customer_id: string | null;
 }
 
+export interface TenantSelf {
+  name: string;
+  plan: string;
+  status: string;
+  billing_status: string;
+  product_limit: number;
+  product_count: number;
+}
+
+export interface TenantBillingRow {
+  id: string;
+  name: string;
+  plan: string;
+  tenant_status: string;
+  billing_status: 'not_due' | 'due_now' | 'overdue' | 'invoiced' | 'paid';
+  billing_period: 'monthly' | 'annual' | 'one_time';
+  price_eur: number;
+  vat_rate: number;
+  next_invoice_date: string | null;
+  last_invoice_date: string | null;
+  holvi_invoice_number: string | null;
+  notes: string | null;
+  updated_at: string | null;
+}
+
 export interface TenantUser {
   id: string;
   clerk_user_id: string;
@@ -133,6 +158,10 @@ export interface TenantUser {
 }
 
 // ── Tenant API ─────────────────────────────────────────────────────────────
+
+export async function getTenantSelf(token: string): Promise<TenantSelf> {
+  return req(token, '/api/tenant/self');
+}
 
 export async function listProducts(token: string, status?: string): Promise<ProductSummary[]> {
   const q = status ? `?status=${status}` : '';
@@ -192,6 +221,22 @@ export async function listUnclaimed(token: string, email?: string): Promise<{ pr
 
 export async function adminClaimProduct(token: string, tenantId: string, slug: string): Promise<void> {
   await req(token, `/api/admin/tenant/${tenantId}/product/${slug}/claim`, { method: 'POST' });
+}
+
+export async function getAdminStats(token: string): Promise<{ tenant_count: number; product_count: number }> {
+  return req(token, '/api/admin/stats');
+}
+
+export async function listBilling(token: string): Promise<{ rows: TenantBillingRow[] }> {
+  return req(token, '/api/admin/billing');
+}
+
+export async function updateBilling(
+  token: string,
+  tenantId: string,
+  body: Partial<Pick<TenantBillingRow, 'billing_status' | 'billing_period' | 'price_eur' | 'vat_rate' | 'next_invoice_date' | 'last_invoice_date' | 'holvi_invoice_number' | 'notes'>>
+): Promise<TenantBillingRow> {
+  return req(token, `/api/admin/tenant/${tenantId}/billing`, { method: 'POST', body: JSON.stringify(body) });
 }
 
 export async function adminCreateProductForTenant(

@@ -1,15 +1,16 @@
 import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
-import { listTenants, listUnclaimed } from '@/lib/api';
+import { listTenants, listUnclaimed, getAdminStats } from '@/lib/api';
 
 export default async function PlatformPage() {
   const { getToken } = await auth();
   const token = await getToken();
   if (!token) return null;
 
-  const [{ tenants }, { products: unclaimed }] = await Promise.all([
+  const [{ tenants }, { products: unclaimed }, stats] = await Promise.all([
     listTenants(token, 0),
     listUnclaimed(token),
+    getAdminStats(token),
   ]);
 
   const active = tenants.filter(t => t.status === 'active').length;
@@ -29,10 +30,11 @@ export default async function PlatformPage() {
     <div>
       <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '24px' }}>Platform — yleiskatsaus</h1>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {stat('Tenantit yhteensä', tenants.length, '/platform/tenants')}
         {stat('Aktiiviset', active)}
         {stat('Trial', trial)}
+        {stat('Tuotteita', stats.product_count)}
         {stat('Lunastamatta', unclaimed.length, '/platform/products/unclaimed')}
       </div>
 
