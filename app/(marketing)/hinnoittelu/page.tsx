@@ -114,7 +114,7 @@ export default function PricingPage() {
       </div>
 
       <p style={{ fontSize: '12px', color: 'var(--c-text-3)', textAlign: 'center' }}>
-        Kysymyksiä? <a href="mailto:[SAHKOPOSTI]" style={{ color: 'var(--c-accent)' }}>Ota yhteyttä</a> · Lue myös{' '}
+        Kysymyksiä? <a href="mailto:hello@tulkintatila.fi" style={{ color: 'var(--c-accent)' }}>Ota yhteyttä</a> · Lue myös{' '}
         <Link href="/legal/kayttoehdot" style={{ color: 'var(--c-accent)' }}>käyttöehdot</Link> ja{' '}
         <Link href="/legal/peruutusehdot" style={{ color: 'var(--c-accent)' }}>peruutusehdot</Link>
       </p>

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Käyttöehdot – Tuotepassi',
+  title: 'Käyttöehdot – Tulkintatila',
 };
 
 // BETA-VAIHE: Tämä on käytännön beta-vaiheen sopimuspohja.
@@ -25,10 +25,10 @@ export default function TermsPage() {
       </div>
 
       <h1 style={s.h1}>Käyttöehdot</h1>
-      <p style={s.updated}>Viimeksi päivitetty: [PVM]</p>
+      <p style={s.updated}>Viimeksi päivitetty: 23.6.2026</p>
 
       <h2 style={s.h2}>1. Palveluntarjoaja</h2>
-      <p style={s.p}>[YRITYKSEN NIMI], Y-tunnus [Y-TUNNUS], [OSOITE]. Jäljempänä "palveluntarjoaja" tai "me".</p>
+      <p style={s.p}>Tulkintatila / Fiksiribu, Y-tunnus 1976813-2, Kotipaikka Helsinki. Jäljempänä "palveluntarjoaja" tai "me".</p>
 
       <h2 style={s.h2}>2. Palvelun kuvaus</h2>
       <p style={s.p}>Tarjoamme SaaS-pohjaisen tuotepassipalvelun, jolla voit hallita tuotetietoja, vaatimustenmukaisuusdokumentteja ja jakaa tuotetietoja QR-koodin tai NFC-tunnisteen avulla. Palvelu on tarkoitettu yrityskäyttöön.</p>
@@ -64,7 +64,7 @@ export default function TermsPage() {
       <p style={s.p}>Palveluntarjoajalla on oikeus muuttaa näitä ehtoja ilmoittamalla asiasta 30 päivää etukäteen sähköpostitse. Jatkamalla palvelun käyttöä muutosten jälkeen hyväksyt uudet ehdot.</p>
 
       <h2 style={s.h2}>10. Sovellettava laki ja riitojen ratkaisu</h2>
-      <p style={s.p}>Näihin ehtoihin sovelletaan Suomen lakia. Riidat pyritään ratkaisemaan ensisijaisesti neuvottelemalla. Elleivät neuvottelut johda tulokseen, riita ratkaistaan [KAUPUNKI]n käräjäoikeudessa.</p>
+      <p style={s.p}>Näihin ehtoihin sovelletaan Suomen lakia. Riidat pyritään ratkaisemaan ensisijaisesti neuvottelemalla. Elleivät neuvottelut johda tulokseen, riita ratkaistaan Helsingin käräjäoikeudessa.</p>
 
       <div style={{ borderTop: '1px solid var(--c-border)', marginTop: '2rem', paddingTop: '1.5rem' }}>
         <p style={{ fontSize: '12px', color: 'var(--c-text-3)' }}>

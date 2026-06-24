@@ -24,8 +24,10 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
 
       <footer style={{ background: 'var(--c-surface)', borderTop: '1px solid var(--c-border)', padding: '2rem 1.5rem' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '12px', color: 'var(--c-text-3)' }}>
-            © {new Date().getFullYear()} [YRITYKSEN NIMI]
+          <span style={{ fontSize: '12px', color: 'var(--c-text-3)', lineHeight: 1.6 }}>
+            © {new Date().getFullYear()} Tulkintatila · Fiksiribu · Y-tunnus 1976813-2 · Kotipaikka Helsinki
+            <br />
+            <a href="mailto:hello@tulkintatila.fi" style={{ color: 'var(--c-text-3)' }}>hello@tulkintatila.fi</a>
           </span>
           <nav style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
             {[

@@ -28,12 +28,12 @@ export default function DpaPage() {
       </div>
 
       <h1 style={s.h1}>Tietojenkäsittelysopimus</h1>
-      <p style={s.updated}>Viimeksi päivitetty: [PVM]</p>
+      <p style={s.updated}>Viimeksi päivitetty: 23.6.2026</p>
 
       <h2 style={s.h2}>Osapuolten roolit</h2>
       <p style={s.p}>Tämä sopimus selittää, miten henkilötietoja käsitellään palvelusuhteessa.</p>
       <ul style={s.ul}>
-        <li><strong>Palveluntarjoaja ([YRITYKSEN NIMI]):</strong> toimii rekisterinpitäjänä asiakkaan tilin ja laskutustietojen osalta.</li>
+        <li><strong>Palveluntarjoaja (Tulkintatila / Fiksiribu):</strong> toimii rekisterinpitäjänä asiakkaan tilin ja laskutustietojen osalta.</li>
         <li><strong>Asiakas:</strong> toimii rekisterinpitäjänä omien tuotetietojensa (esim. valmistajan nimi ja yhteystiedot) osalta. Palveluntarjoaja on tällöin henkilötietojen käsittelijä.</li>
       </ul>
       <p style={s.p}>Käytännössä: kun syötät tuotteeseesi valmistajan nimen ja sähköpostin, olet itse tietojen rekisterinpitäjä. Tarjoamme ainoastaan teknisen tallennusalustan.</p>
@@ -97,7 +97,7 @@ export default function DpaPage() {
       <p style={s.p}>Jos havaitsemme tietoturvaloukkauksen, joka koskee sinun rekisterinpitäjäroolissasi olevia tietoja, ilmoitamme siitä sinulle 72 tunnin sisällä sähköpostitse. Toimit sitten GDPR:n mukaisen ilmoitusvelvollisuuden mukaisesti tarvittaessa valvontaviranomaiselle.</p>
 
       <h2 style={s.h2}>Yhteystiedot</h2>
-      <p style={s.p}>Tietojenkäsittelyä koskevat kysymykset: [SAHKOPOSTI]</p>
+      <p style={s.p}>Tietojenkäsittelyä koskevat kysymykset: hello@tulkintatila.fi</p>
 
       <div style={{ borderTop: '1px solid var(--c-border)', marginTop: '2rem', paddingTop: '1.5rem' }}>
         <p style={{ fontSize: '12px', color: 'var(--c-text-3)' }}>

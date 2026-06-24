@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Tietosuojaseloste – Tuotepassi',
+  title: 'Tietosuojaseloste – Tulkintatila',
 };
 
 // BETA-VAIHE: Tämä on käytännön beta-vaiheen tietosuojaseloste.
@@ -26,10 +26,15 @@ export default function PrivacyPage() {
       </div>
 
       <h1 style={s.h1}>Tietosuojaseloste</h1>
-      <p style={s.updated}>Viimeksi päivitetty: [PVM]</p>
+      <p style={s.updated}>Viimeksi päivitetty: 23.6.2026</p>
 
       <h2 style={s.h2}>1. Rekisterinpitäjä</h2>
-      <p style={s.p}>[YRITYKSEN NIMI]<br />[Y-TUNNUS]<br />[OSOITE]<br />[SAHKOPOSTI]</p>
+      <p style={s.p}>
+        Tulkintatila / Fiksiribu<br />
+        Y-tunnus 1976813-2<br />
+        Kotipaikka Helsinki<br />
+        <a href="mailto:hello@tulkintatila.fi" style={{ color: 'var(--c-accent)' }}>hello@tulkintatila.fi</a>
+      </p>
 
       <h2 style={s.h2}>2. Mitä tietoja keräämme ja miksi</h2>
       <p style={s.p}>Keräämme henkilötietoja palvelun käyttämisen mahdollistamiseksi. Kerättävät tiedot:</p>
@@ -62,7 +67,7 @@ export default function PrivacyPage() {
         <li>siirtää tietosi toiseen palveluun (art. 20)</li>
         <li>tehdä valitus tietosuojavaltuutetulle (tietosuoja.fi)</li>
       </ul>
-      <p style={s.p}>Lähetä pyynnöt osoitteeseen: [SAHKOPOSTI]</p>
+      <p style={s.p}>Lähetä pyynnöt osoitteeseen: hello@tulkintatila.fi</p>
 
       <h2 style={s.h2}>6. Evästeet ja kolmannen osapuolen skriptit</h2>
       <p style={s.p}>Käytämme Clerkin istuntoevästeita kirjautumisen ylläpitämiseen. Käytämme Google Fonts -palvelua fonttilatauksia varten — tämä aiheuttaa yhteyden Googlen palvelimiin sivun latauksen yhteydessä. Emme käytä seurantaevästeitä tai analytiikkapalveluita tällä hetkellä.</p>

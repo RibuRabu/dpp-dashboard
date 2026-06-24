@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAuth, useOrganization } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { createProduct, ApiError } from '@/lib/api';
+import { createProduct, apiErrMsg, NetworkError } from '@/lib/api';
 import Link from 'next/link';
 
 function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
@@ -33,21 +33,6 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
       {children}
     </div>
   );
-}
-
-function apiErrMsg(e: unknown): string {
-  if (e instanceof ApiError) {
-    const body = e.body as { error?: string; limit?: number };
-    const map: Record<string, string> = {
-      no_active_organization: 'Ei aktiivista organisaatiota. Valitse organisaatio navipalkin vaihtajasta.',
-      tenant_not_found: 'Organisaatiota ei löydy järjestelmästä. Ota yhteyttä tukeen.',
-      product_limit_reached: `Tuoteraja (${body.limit ?? '?'} tuotetta) täynnä. Päivitä plan asetuksista.`,
-      product_name_required: 'Tuotteen nimi on pakollinen.',
-      unauthorized: 'Kirjautuminen vaaditaan.',
-    };
-    return map[body.error ?? ''] ?? `Virhe ${e.status}: ${JSON.stringify(e.body)}`;
-  }
-  return String(e);
 }
 
 export default function NewProductPage() {
@@ -197,8 +182,10 @@ export default function NewProductPage() {
             <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '12px', padding: '16px' }}>
               {err && (
                 <div style={{ background: 'rgba(196,40,42,.06)', border: '1px solid rgba(196,40,42,.2)', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px' }}>
-                  <p style={{ color: 'var(--c-warn)', fontSize: '13px', fontWeight: 500 }}>Virhe</p>
-                  <p style={{ color: 'var(--c-warn)', fontSize: '12px', marginTop: '3px' }}>{err}</p>
+                  <p style={{ color: 'var(--c-warn)', fontSize: '13px', fontWeight: 500, marginBottom: '4px' }}>Virhe</p>
+                  {err.split('\n').map((line, i) => (
+                    <p key={i} style={{ color: i === 0 ? 'var(--c-warn)' : 'var(--c-text-3)', fontSize: i === 0 ? '12px' : '11px', fontFamily: i > 0 ? 'monospace' : 'inherit', marginTop: '2px', wordBreak: 'break-all' }}>{line}</p>
+                  ))}
                 </div>
               )}
               <button

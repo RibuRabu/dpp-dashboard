@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getProduct, updateProduct, deleteProduct, regenerateShareLink, getCompliance, parseJson, statusLabel, statusColor, fmtDate, Product, ComplianceResult, ApiError } from '@/lib/api';
+import { getProduct, updateProduct, deleteProduct, regenerateShareLink, getCompliance, parseJson, statusLabel, statusColor, fmtDate, Product, ComplianceResult, ApiError, NetworkError } from '@/lib/api';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 const TABS = ['Perustiedot', 'Listat', 'Käännökset', 'Dokumentit', 'Jakaminen', 'EU-vaatimukset'] as const;
@@ -89,6 +89,7 @@ export default function ProductPage() {
   const [complianceError, setComplianceError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const token = await getToken();
@@ -96,12 +97,22 @@ export default function ProductPage() {
     try {
       const p = await getProduct(token, slug);
       setProduct(p);
-      setShareUrl(`${window.location.origin.replace(':3000', '')}/owner/${p.owner_token}`);
+      setShareUrl(`${API}/owner/${p.owner_token}`);
       setBasic({ product_name: p.product_name ?? '', brand_name: p.brand_name ?? '', manufacturer_name: p.manufacturer_name ?? '', manufacturer_email: p.manufacturer_email ?? '', manufacturer_address: p.manufacturer_address ?? '', responsible_operator_name: p.responsible_operator_name ?? '', responsible_operator_email: p.responsible_operator_email ?? '', responsible_operator_address: p.responsible_operator_address ?? '', sku: p.sku ?? '', gtin: p.gtin ?? '', batch_number: p.batch_number ?? '', serial_number: p.serial_number ?? '', product_type: p.product_type ?? '', status: p.status, compliance_status: p.compliance_status ?? 'not_started', category_id: p.category_id ?? '', target_markets: parseJson(p.target_markets_json, ['EU']) });
       setLists({ materials: parseJson(p.materials_json, []), substances: parseJson(p.substances_json, []), care_instructions: parseJson(p.care_instructions_json, []), repair_instructions: parseJson(p.repair_instructions_json, []), recycling_instructions: parseJson(p.recycling_instructions_json, []), safety_notes: parseJson(p.safety_notes_json, []) });
       setTranslations(parseJson(p.translations_json, {}));
       setDocs(parseJson(p.compliance_documents_json, []));
-    } catch { } finally { setLoading(false); }
+    } catch (e) {
+      if (e instanceof NetworkError) {
+        setLoadError(`Verkkovirhe tai CORS-ongelma.\nURL: ${e.method} ${e.url}\nTarkista: CORS_ORIGIN (Worker) ja NEXT_PUBLIC_API_URL (Vercel).`);
+      } else if (e instanceof ApiError && e.status === 404) {
+        // product truly not found — loadError stays null, product stays null → shows "ei löytynyt"
+      } else if (e instanceof ApiError) {
+        setLoadError(`Palvelinvirhe ${e.status}: ${JSON.stringify(e.body)}`);
+      } else {
+        setLoadError(String(e));
+      }
+    } finally { setLoading(false); }
   }, [getToken, slug]);
 
   useEffect(() => { load(); }, [load]);
@@ -198,6 +209,16 @@ export default function ProductPage() {
   }
 
   if (loading) return <div style={{ color: 'var(--c-text-3)', fontSize: '14px', padding: '40px' }}>Ladataan...</div>;
+  if (loadError) return (
+    <div style={{ padding: '40px', maxWidth: '600px' }}>
+      <div style={{ background: 'rgba(196,40,42,.06)', border: '1px solid rgba(196,40,42,.25)', borderRadius: '10px', padding: '16px 20px' }}>
+        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-warn)', marginBottom: '8px' }}>Tuotteen lataus epäonnistui</p>
+        {loadError.split('\n').map((line, i) => (
+          <p key={i} style={{ fontSize: i === 0 ? '13px' : '11px', color: i === 0 ? 'var(--c-warn)' : 'var(--c-text-3)', fontFamily: i > 0 ? 'monospace' : 'inherit', marginTop: '3px', wordBreak: 'break-all' }}>{line}</p>
+        ))}
+      </div>
+    </div>
+  );
   if (!product) return <div style={{ color: 'var(--c-warn)', fontSize: '14px', padding: '40px' }}>Tuotetta ei löytynyt.</div>;
 
   const setBasicField = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { markDirty(); setBasic(b => ({ ...b, [k]: e.target.value })); };
@@ -279,12 +300,18 @@ export default function ProductPage() {
               <Card title="Valmistaja">
                 <Field label="Nimi"><input style={inp} value={basic.manufacturer_name} onChange={setBasicField('manufacturer_name')} /></Field>
                 <Field label="Sähköposti"><input type="email" style={inp} value={basic.manufacturer_email} onChange={setBasicField('manufacturer_email')} /></Field>
-                <Field label="Osoite"><input style={inp} value={basic.manufacturer_address} onChange={setBasicField('manufacturer_address')} /></Field>
+                <Field label="Osoite">
+                  <input style={inp} value={basic.manufacturer_address} onChange={setBasicField('manufacturer_address')} placeholder="esim. Helsinki, Suomi" />
+                  <p style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '4px' }}>Katuosoite ei ole pakollinen — kaupunki ja maa riittää (esim. Helsinki, Suomi). Tämä tieto näkyy julkisella tuotepassisivulla.</p>
+                </Field>
               </Card>
               <Card title="Vastuullinen operaattori (EU)">
                 <Field label="Nimi"><input style={inp} value={basic.responsible_operator_name} onChange={setBasicField('responsible_operator_name')} /></Field>
                 <Field label="Sähköposti"><input type="email" style={inp} value={basic.responsible_operator_email} onChange={setBasicField('responsible_operator_email')} /></Field>
-                <Field label="Osoite"><input style={inp} value={basic.responsible_operator_address} onChange={setBasicField('responsible_operator_address')} /></Field>
+                <Field label="Osoite">
+                  <input style={inp} value={basic.responsible_operator_address} onChange={setBasicField('responsible_operator_address')} placeholder="esim. Helsinki, Suomi" />
+                  <p style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '4px' }}>GPSR edellyttää vastuullisen toimijan osoitteen. Kaupunki ja maa riittää yksityishenkilöille. Näkyy julkisella tuotepassisivulla.</p>
+                </Field>
               </Card>
             </div>
             <div>

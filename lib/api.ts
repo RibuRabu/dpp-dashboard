@@ -6,18 +6,41 @@ export class ApiError extends Error {
   }
 }
 
+// Thrown when fetch() itself fails — CORS preflight blocked, network unreachable, DNS failure.
+// Distinguished from ApiError (which means the server responded with 4xx/5xx).
+export class NetworkError extends Error {
+  constructor(public url: string, public method: string) {
+    super(`NetworkError: ${method} ${url}`);
+  }
+}
+
 async function req<T>(token: string | null, path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {};
   if (!(init.body instanceof FormData)) headers['Content-Type'] = 'application/json';
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API}${path}`, { ...init, headers: { ...headers, ...(init.headers as Record<string, string> || {}) } });
+  const url = `${API}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers: { ...headers, ...(init.headers as Record<string, string> || {}) } });
+  } catch {
+    // fetch() threw — this is always a network-level failure (CORS preflight 403,
+    // DNS failure, connection refused, TLS error). The server never sent a response.
+    throw new NetworkError(url, (init.method ?? 'GET').toUpperCase());
+  }
   const data = await res.json();
   if (!res.ok) throw new ApiError(res.status, data);
   return data as T;
 }
 
 export function apiErrMsg(e: unknown): string {
+  if (e instanceof NetworkError) {
+    return [
+      'Verkkovirhe tai CORS-ongelma — selain ei tavoittanut API-palvelinta.',
+      `URL: ${e.method} ${e.url}`,
+      'Tarkista: CORS_ORIGIN (Worker secret) ja NEXT_PUBLIC_API_URL (Vercel env).',
+    ].join('\n');
+  }
   if (e instanceof ApiError) {
     const body = e.body as { error?: string; limit?: number };
     const map: Record<string, string> = {
