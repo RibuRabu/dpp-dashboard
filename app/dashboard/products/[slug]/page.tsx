@@ -68,7 +68,7 @@ function ListEditor({ value, onChange, placeholder }: { value: string[]; onChang
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { getToken } = useAuth();
+  const { getToken, orgId } = useAuth();
   const router = useRouter();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -95,7 +95,7 @@ export default function ProductPage() {
     const token = await getToken();
     if (!token) return;
     try {
-      const p = await getProduct(token, slug);
+      const p = await getProduct(token, slug, orgId);
       setProduct(p);
       setShareUrl(`${API}/owner/${p.owner_token}`);
       setBasic({ product_name: p.product_name ?? '', brand_name: p.brand_name ?? '', manufacturer_name: p.manufacturer_name ?? '', manufacturer_email: p.manufacturer_email ?? '', manufacturer_address: p.manufacturer_address ?? '', responsible_operator_name: p.responsible_operator_name ?? '', responsible_operator_email: p.responsible_operator_email ?? '', responsible_operator_address: p.responsible_operator_address ?? '', sku: p.sku ?? '', gtin: p.gtin ?? '', batch_number: p.batch_number ?? '', serial_number: p.serial_number ?? '', product_type: p.product_type ?? '', status: p.status, compliance_status: p.compliance_status ?? 'not_started', category_id: p.category_id ?? '', target_markets: parseJson(p.target_markets_json, ['EU']) });
@@ -113,7 +113,7 @@ export default function ProductPage() {
         setLoadError(String(e));
       }
     } finally { setLoading(false); }
-  }, [getToken, slug]);
+  }, [getToken, slug, orgId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -147,7 +147,7 @@ export default function ProductPage() {
     try {
       const token = await getToken();
       if (!token) throw new Error('Ei kirjautumista');
-      const updated = await updateProduct(token, slug, body);
+      const updated = await updateProduct(token, slug, body, orgId);
       setProduct(updated);
       clearDirty();
       setMsg({ type: 'ok', text: 'Tallennettu' });
@@ -178,7 +178,7 @@ export default function ProductPage() {
     try {
       const token = await getToken();
       const form = new FormData(); form.append('file', file);
-      const res = await fetch(`${API}/api/tenant/product/${slug}/document`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      const res = await fetch(`${API}/api/tenant/product/${slug}/document`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, ...(orgId ? { 'X-Organization-Id': orgId } : {}) }, body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(JSON.stringify(data));
       setDocs(d => [...d, { name: data.name, url: data.url }]);
@@ -193,7 +193,7 @@ export default function ProductPage() {
     try {
       const token = await getToken();
       if (!token) throw new Error('');
-      const r = await regenerateShareLink(token, slug);
+      const r = await regenerateShareLink(token, slug, orgId);
       setShareUrl(`${API}${r.owner_url}`);
       setMsg({ type: 'ok', text: 'Uusi jakolinkki luotu' });
     } catch { setMsg({ type: 'err', text: 'Virhe' }); }
@@ -204,7 +204,7 @@ export default function ProductPage() {
     if (!confirm('Arkistoidaanko tuote? Julkinen linkki piilottaa tuotteen.')) return;
     const token = await getToken();
     if (!token) return;
-    await deleteProduct(token, slug);
+    await deleteProduct(token, slug, orgId);
     router.push('/dashboard/products');
   }
 

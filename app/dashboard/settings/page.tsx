@@ -17,7 +17,7 @@ export default async function SettingsPage() {
   let fetchError: string | null = null;
 
   try {
-    if (token) tenant = await getTenantSelf(token);
+    if (token) tenant = await getTenantSelf(token, orgId);
   } catch (e) {
     if (e instanceof ApiError) {
       const body = e.body as { error?: string };

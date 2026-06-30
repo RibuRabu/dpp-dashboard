@@ -186,38 +186,42 @@ export interface TenantUser {
 
 // ── Tenant API ─────────────────────────────────────────────────────────────
 
-export async function getTenantSelf(token: string): Promise<TenantSelf> {
-  return req(token, '/api/tenant/self');
+function orgHeader(orgId?: string | null): Record<string, string> {
+  return orgId ? { 'X-Organization-Id': orgId } : {};
 }
 
-export async function listProducts(token: string, status?: string): Promise<ProductSummary[]> {
+export async function getTenantSelf(token: string, orgId?: string | null): Promise<TenantSelf> {
+  return req(token, '/api/tenant/self', { headers: orgHeader(orgId) });
+}
+
+export async function listProducts(token: string, orgId?: string | null, status?: string): Promise<ProductSummary[]> {
   const q = status ? `?status=${status}` : '';
-  const res = await req<{ products: ProductSummary[] }>(token, `/api/tenant/products${q}`);
+  const res = await req<{ products: ProductSummary[] }>(token, `/api/tenant/products${q}`, { headers: orgHeader(orgId) });
   return res.products;
 }
 
-export async function getProduct(token: string, slug: string): Promise<Product> {
-  return req<Product>(token, `/api/tenant/product/${slug}`);
+export async function getProduct(token: string, slug: string, orgId?: string | null): Promise<Product> {
+  return req<Product>(token, `/api/tenant/product/${slug}`, { headers: orgHeader(orgId) });
 }
 
-export async function createProduct(token: string, body: Record<string, unknown>): Promise<{ slug: string; token: string; product_uid: string }> {
-  return req(token, '/api/tenant/product', { method: 'POST', body: JSON.stringify(body) });
+export async function createProduct(token: string, body: Record<string, unknown>, orgId?: string | null): Promise<{ slug: string; token: string; product_uid: string }> {
+  return req(token, '/api/tenant/product', { method: 'POST', body: JSON.stringify(body), headers: orgHeader(orgId) });
 }
 
-export async function updateProduct(token: string, slug: string, body: Record<string, unknown>): Promise<Product> {
-  return req<Product>(token, `/api/tenant/product/${slug}`, { method: 'POST', body: JSON.stringify(body) });
+export async function updateProduct(token: string, slug: string, body: Record<string, unknown>, orgId?: string | null): Promise<Product> {
+  return req<Product>(token, `/api/tenant/product/${slug}`, { method: 'POST', body: JSON.stringify(body), headers: orgHeader(orgId) });
 }
 
-export async function deleteProduct(token: string, slug: string): Promise<void> {
-  await req(token, `/api/tenant/product/${slug}`, { method: 'DELETE' });
+export async function deleteProduct(token: string, slug: string, orgId?: string | null): Promise<void> {
+  await req(token, `/api/tenant/product/${slug}`, { method: 'DELETE', headers: orgHeader(orgId) });
 }
 
-export async function regenerateShareLink(token: string, slug: string): Promise<{ owner_url: string; token: string }> {
-  return req(token, `/api/tenant/product/${slug}/share-link`, { method: 'POST' });
+export async function regenerateShareLink(token: string, slug: string, orgId?: string | null): Promise<{ owner_url: string; token: string }> {
+  return req(token, `/api/tenant/product/${slug}/share-link`, { method: 'POST', headers: orgHeader(orgId) });
 }
 
-export async function claimProduct(token: string, ownerToken: string): Promise<{ slug: string }> {
-  return req(token, `/api/tenant/claim/${ownerToken}`, { method: 'POST' });
+export async function claimProduct(token: string, ownerToken: string, orgId?: string | null): Promise<{ slug: string }> {
+  return req(token, `/api/tenant/claim/${ownerToken}`, { method: 'POST', headers: orgHeader(orgId) });
 }
 
 export async function getCompliance(productUid: string): Promise<ComplianceResult> {

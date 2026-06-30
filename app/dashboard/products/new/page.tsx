@@ -36,7 +36,7 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
 }
 
 export default function NewProductPage() {
-  const { getToken } = useAuth();
+  const { getToken, orgId } = useAuth();
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -59,7 +59,7 @@ export default function NewProductPage() {
     try {
       const token = await getToken();
       if (!token) throw new Error('Ei kirjautumista');
-      const { slug } = await createProduct(token, form);
+      const { slug } = await createProduct(token, form, orgId);
       router.push(`/dashboard/products/${slug}`);
     } catch (e) {
       setErr(apiErrMsg(e));

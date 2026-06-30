@@ -24,7 +24,7 @@ export default async function ProductsPage() {
   let fetchError: string | null = null;
   const BLOCKED_ERRORS = new Set(['tenant_inactive', 'tenant_suspended', 'tenant_archived', 'tenant_blocked']);
   try {
-    if (token) products = await listProducts(token);
+    if (token) products = await listProducts(token, orgId);
   } catch (e) {
     if (e instanceof ApiError && e.status === 403) {
       const errCode = (e.body as { error?: string })?.error ?? '';
