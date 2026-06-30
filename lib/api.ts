@@ -46,6 +46,10 @@ export function apiErrMsg(e: unknown): string {
     const map: Record<string, string> = {
       no_active_organization: 'Ei aktiivista organisaatiota. Valitse organisaatio navipalkin vaihtajasta.',
       tenant_not_found: 'Organisaatiota ei löydy järjestelmästä. Ota yhteyttä tukeen.',
+      tenant_inactive: 'Tili ei ole aktiivinen. Ota yhteyttä tukeen tilisi aktivoimiseksi.',
+      tenant_suspended: 'Tili jäädytetty. Ota yhteyttä tukeen.',
+      tenant_archived: 'Tili on arkistoitu.',
+      tenant_blocked: 'Tili on estetty. Ota yhteyttä tukeen.',
       product_limit_reached: `Tuoteraja täynnä (${body.limit ?? '?'} tuotetta). Päivitä plan asetuksista.`,
       product_name_required: 'Tuotteen nimi on pakollinen.',
       unauthorized: 'Kirjautuminen vaaditaan.',
@@ -225,8 +229,10 @@ export async function getCompliance(productUid: string): Promise<ComplianceResul
 
 // ── Platform admin API ─────────────────────────────────────────────────────
 
-export async function listTenants(token: string, offset = 0): Promise<{ tenants: Tenant[]; offset: number }> {
-  return req(token, `/api/admin/tenants?limit=50&offset=${offset}`);
+export async function listTenants(token: string, offset = 0, includeArchived = false): Promise<{ tenants: Tenant[]; offset: number }> {
+  const params = new URLSearchParams({ limit: '50', offset: String(offset) });
+  if (includeArchived) params.set('include_archived', 'true');
+  return req(token, `/api/admin/tenants?${params}`);
 }
 
 export async function getTenant(token: string, id: string): Promise<{ tenant: Tenant; products: ProductSummary[]; users: TenantUser[] }> {

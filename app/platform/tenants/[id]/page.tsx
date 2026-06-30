@@ -19,6 +19,7 @@ export default function TenantPage() {
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState('');
   const [createOk, setCreateOk] = useState<string | null>(null);
+  const [confirmingArchive, setConfirmingArchive] = useState(false);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState('');
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
@@ -71,12 +72,19 @@ export default function TenantPage() {
   }
 
   async function save() {
+    // Require explicit confirmation before archiving an active tenant
+    if (status === 'archived' && data?.tenant.status !== 'archived' && !confirmingArchive) {
+      setConfirmingArchive(true);
+      return;
+    }
+    setConfirmingArchive(false);
     setSaving(true); setMsg('');
     try {
       const token = await getToken();
       if (!token) throw new Error('');
       await updateTenant(token, id, { plan, status, product_limit: limit });
       setMsg('Tallennettu');
+      setData(d => d ? { ...d, tenant: { ...d.tenant, status, plan, product_limit: limit } } : d);
     } catch { setMsg('Virhe'); }
     finally { setSaving(false); }
   }
@@ -182,6 +190,12 @@ export default function TenantPage() {
 
         {/* Settings */}
         <div>
+          {tenant.status === 'archived' && (
+            <div style={{ background: 'rgba(196,40,42,.06)', border: '1px solid rgba(196,40,42,.2)', borderRadius: '10px', padding: '12px 14px', marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--c-warn)', marginBottom: '3px' }}>Tenant arkistoitu</p>
+              <p style={{ fontSize: '11px', color: 'var(--c-text-2)' }}>Kaikki API-kutsut on estetty. Tuotteet ovat tallessa. Palauta asettamalla status trial tai active.</p>
+            </div>
+          )}
           <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '12px', overflow: 'hidden' }}>
             <div style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--c-text-3)', padding: '10px 16px', borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface-2)' }}>Asetukset</div>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border-dim)' }}>
@@ -195,11 +209,12 @@ export default function TenantPage() {
             </div>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border-dim)' }}>
               <label style={{ display: 'block', fontSize: '11px', color: 'var(--c-text-3)', marginBottom: '6px' }}>STATUS</label>
-              <select value={status} onChange={e => setStatus(e.target.value)} style={{ ...inp, width: '100%' }}>
+              <select value={status} onChange={e => { setStatus(e.target.value); setConfirmingArchive(false); }} style={{ ...inp, width: '100%' }}>
                 <option value="trial">trial</option>
                 <option value="active">active</option>
                 <option value="suspended">suspended</option>
                 <option value="inactive">inactive</option>
+                <option value="archived">archived</option>
               </select>
             </div>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border-dim)' }}>
@@ -207,10 +222,28 @@ export default function TenantPage() {
               <input type="number" min={0} max={10000} value={limit} onChange={e => setLimit(Number(e.target.value))} style={{ ...inp, width: '100%' }} />
             </div>
             <div style={{ padding: '16px' }}>
+              {confirmingArchive && (
+                <div style={{ background: 'rgba(196,40,42,.06)', border: '1px solid rgba(196,40,42,.2)', borderRadius: '8px', padding: '12px 14px', marginBottom: '12px' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--c-warn)', marginBottom: '4px' }}>Vahvista arkistointi</p>
+                  <p style={{ fontSize: '11px', color: 'var(--c-text-2)', marginBottom: '10px' }}>
+                    Estää kaikki API-kutsut välittömästi. Tuotteet säilyvät eikä mitään poisteta. Voit palauttaa tenantin milloin tahansa.
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={save} style={{ fontSize: '12px', fontWeight: 600, padding: '6px 14px', background: 'var(--c-warn)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+                      Kyllä, arkistoi
+                    </button>
+                    <button onClick={() => { setConfirmingArchive(false); setStatus(data!.tenant.status); }} style={{ fontSize: '12px', padding: '6px 12px', border: '1px solid var(--c-border)', borderRadius: '6px', background: 'var(--c-surface)', cursor: 'pointer', color: 'var(--c-text-2)' }}>
+                      Peruuta
+                    </button>
+                  </div>
+                </div>
+              )}
               {msg && <p style={{ fontSize: '12px', color: msg === 'Tallennettu' ? 'var(--c-ok)' : 'var(--c-warn)', marginBottom: '8px' }}>{msg}</p>}
-              <button onClick={save} disabled={saving} style={{ width: '100%', background: 'var(--c-accent)', color: '#fff', fontSize: '14px', fontWeight: 500, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Tallennetaan...' : 'Tallenna'}
-              </button>
+              {!confirmingArchive && (
+                <button onClick={save} disabled={saving} style={{ width: '100%', background: 'var(--c-accent)', color: '#fff', fontSize: '14px', fontWeight: 500, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+                  {saving ? 'Tallennetaan...' : 'Tallenna'}
+                </button>
+              )}
             </div>
           </div>
 

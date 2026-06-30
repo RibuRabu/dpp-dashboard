@@ -34,18 +34,24 @@ export default async function SettingsPage() {
     </div>
   );
 
-  const suspended = tenant?.status === 'suspended' || tenant?.status === 'inactive';
+  const STATUS_BANNER: Record<string, { title: string; body: string }> = {
+    suspended: { title: 'Tili jäädytetty', body: 'Tuotteiden luonti ja muokkaus on estetty. Ota yhteyttä tukeen tilisi aktivoimiseksi.' },
+    inactive:  { title: 'Tili ei ole aktiivinen', body: 'Tili odottaa aktivointia. Ota yhteyttä tukeen.' },
+    archived:  { title: 'Tili arkistoitu', body: 'Tili on arkistoitu eikä uusia toimintoja voi tehdä.' },
+  };
+  const banner = tenant?.status ? STATUS_BANNER[tenant.status] : null;
+  const suspended = !!tenant?.status && tenant.status in STATUS_BANNER;
 
   return (
     <div>
       <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '24px' }}>Asetukset</h1>
 
-      {suspended && (
+      {banner && (
         <div style={{ background: 'rgba(196,40,42,.06)', border: '1px solid rgba(196,40,42,.25)', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '16px', flexShrink: 0 }}>⚠</span>
           <div>
-            <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-warn)', marginBottom: '4px' }}>Tili jäädytetty</p>
-            <p style={{ fontSize: '13px', color: 'var(--c-warn)' }}>Tuotteiden luonti ja muokkaus on estetty. Ota yhteyttä tukeen tilisi aktivoimiseksi.</p>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-warn)', marginBottom: '4px' }}>{banner.title}</p>
+            <p style={{ fontSize: '13px', color: 'var(--c-warn)' }}>{banner.body}</p>
           </div>
         </div>
       )}
