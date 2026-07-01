@@ -1,17 +1,18 @@
 import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
-import { listTenants, listUnclaimed, getAdminStats } from '@/lib/api';
+import { listTenants, listUnclaimed, getAdminStats, Tenant, ProductSummary } from '@/lib/api';
 
 export default async function PlatformPage() {
   const { getToken } = await auth();
   const token = await getToken();
   if (!token) return null;
 
-  const [{ tenants }, { products: unclaimed }, stats] = await Promise.all([
-    listTenants(token, 0),
-    listUnclaimed(token),
-    getAdminStats(token),
-  ]);
+  let tenants: Tenant[] = [];
+  let unclaimed: ProductSummary[] = [];
+  let stats = { tenant_count: 0, product_count: 0 };
+  try { tenants = (await listTenants(token, 0)).tenants; } catch {}
+  try { unclaimed = (await listUnclaimed(token)).products; } catch {}
+  try { stats = await getAdminStats(token); } catch {}
 
   const active = tenants.filter(t => t.status === 'active').length;
   const trial = tenants.filter(t => t.status === 'trial').length;

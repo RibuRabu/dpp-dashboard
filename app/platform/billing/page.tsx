@@ -100,11 +100,17 @@ export default function BillingPage() {
   const [saving, setSaving] = useState<string | null>(null);
 
   async function load() {
-    const token = await getToken();
-    if (!token) return;
-    const data = await listBilling(token);
-    setRows(data.rows);
-    setLoading(false);
+    setLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const data = await listBilling(token);
+      setRows(data.rows);
+    } catch {
+      // tyhjä taulukko on parempi kuin ikuinen lataus
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []);

@@ -1,13 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getTenant, updateTenant, fmtDate, Tenant, ProductSummary, TenantUser, statusLabel, statusColor, ApiError, adminCreateProductForTenant } from '@/lib/api';
+import { getTenant, updateTenant, deleteTenant, fmtDate, Tenant, ProductSummary, TenantUser, statusLabel, statusColor, ApiError, adminCreateProductForTenant } from '@/lib/api';
 
 export default function TenantPage() {
   const { id } = useParams<{ id: string }>();
   const { getToken } = useAuth();
+  const router = useRouter();
   const API = process.env.NEXT_PUBLIC_API_URL ?? '';
   const [data, setData] = useState<{ tenant: Tenant; products: ProductSummary[]; users: TenantUser[] } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -23,6 +24,7 @@ export default function TenantPage() {
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState('');
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     getToken().then(token => {
@@ -87,6 +89,23 @@ export default function TenantPage() {
       setData(d => d ? { ...d, tenant: { ...d.tenant, status, plan, product_limit: limit } } : d);
     } catch { setMsg('Virhe'); }
     finally { setSaving(false); }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Poistetaanko tenant "${tenant.name}" pysyvästi? Toimintoa ei voi perua.`)) return;
+    setDeleting(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await deleteTenant(token, id);
+      router.push('/platform/tenants');
+    } catch (e) {
+      if (e instanceof ApiError && (e.body as { error?: string }).error === 'tenant_has_products') {
+        setMsg('Ei voi poistaa — tenantilla on tuotteita.');
+      } else {
+        setMsg('Poisto epäonnistui.');
+      }
+    } finally { setDeleting(false); }
   }
 
   if (!data) return <div style={{ color: 'var(--c-text-3)', padding: '40px', fontSize: '14px' }}>Ladataan...</div>;
@@ -242,6 +261,15 @@ export default function TenantPage() {
               {!confirmingArchive && (
                 <button onClick={save} disabled={saving} style={{ width: '100%', background: 'var(--c-accent)', color: '#fff', fontSize: '14px', fontWeight: 500, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
                   {saving ? 'Tallennetaan...' : 'Tallenna'}
+                </button>
+              )}
+              {products.length === 0 && (
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{ width: '100%', marginTop: '8px', background: 'transparent', color: 'var(--c-warn)', fontSize: '13px', fontWeight: 500, padding: '8px', borderRadius: '8px', border: '1px solid rgba(196,40,42,.3)', cursor: 'pointer', opacity: deleting ? 0.7 : 1 }}
+                >
+                  {deleting ? 'Poistetaan...' : 'Poista tenant'}
                 </button>
               )}
             </div>

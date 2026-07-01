@@ -280,6 +280,10 @@ export async function adminCreateProductForTenant(
   return req(token, `/api/admin/tenant/${tenantId}/product`, { method: 'POST', body: JSON.stringify(body) });
 }
 
+export async function deleteTenant(token: string, id: string): Promise<{ ok: boolean }> {
+  return req(token, `/api/admin/tenant/${id}`, { method: 'DELETE' });
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 export function parseJson<T>(json: string | null | undefined, fallback: T): T {
