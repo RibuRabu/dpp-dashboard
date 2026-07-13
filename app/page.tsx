@@ -5,6 +5,7 @@ import Link from 'next/link';
 export const metadata = {
   title: 'Tulkintatila – Digitaalinen tuotepassi tuotteillesi',
   description: 'Luo, hallinnoi ja julkaise tuotteidesi digitaaliset passit. Rakenteinen tuotetieto pysyy ajan tasalla — myös sen jälkeen, kun tuote on jo myyty.',
+  alternates: { canonical: '/' },
 };
 
 const FAQ = [
@@ -38,6 +39,15 @@ const WHY_NOT = [
   { label: 'PDF', issues: ['Vanhenee heti tulostuksen jälkeen', 'Ei päivity myyntiketjussa', 'Ei rakenteista dataa'] },
   { label: 'QR-generaattori', issues: ['Ei sisällä tietosisältöä', 'Ei päivitettävää hallintaa', 'Ei dokumentaatiota'] },
   { label: 'Tulkintatila', good: true, issues: ['Rakenteinen tieto hallintapaneelissa', 'QR pysyy — tieto päivittyy', 'Dokumentit, käännökset, EU-tarkistus'] },
+];
+
+const CATEGORIES = [
+  { name: 'Tekstiilit ja vaatteet', timeline: 'ESPR-vaatimukset 2027 alkaen' },
+  { name: 'Elektroniikka', timeline: 'ESPR-vaatimukset 2027 alkaen' },
+  { name: 'Akut', timeline: 'Akkuasetuksen tuotepassi 2027' },
+  { name: 'Korut ja jalometallit', timeline: 'Aikataulu ei vielä vahvistettu' },
+  { name: 'Huonekalut', timeline: 'Aikataulu tarkentuu' },
+  { name: 'Käsityötuotteet ja piensarjat', timeline: 'Aikataulu ei vielä vahvistettu' },
 ];
 
 const SUITABLE = [
@@ -97,6 +107,7 @@ export default async function HomePage() {
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             <Link href="/sign-up" style={ctaPrimary}>Aloita tuotetietojen hallinta</Link>
+            <a href="https://api.digitaalinentuotepassi.tulkintatila.fi/p/esimerkki" target="_blank" rel="noopener" style={ctaSecondary}>Katso esimerkkituotepassi</a>
             <Link href="/hinnoittelu" style={ctaSecondary}>Katso hinnoittelu</Link>
           </div>
           <p style={{ fontSize: '12px', color: 'var(--c-text-3)', marginTop: '1rem' }}>
@@ -150,6 +161,34 @@ export default async function HomePage() {
                 <div style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.6 }}>{step.body}</div>
               </div>
             ))}
+          </div>
+        </section>
+
+        <div style={divider} />
+
+        {/* Categories & compliance */}
+        <section style={sec}>
+          <h2 style={{ ...h2style, fontSize: '1.5rem', textAlign: 'center', marginBottom: '0.75rem' }}>
+            Palvelu kertoo, mitä EU vaatii juuri sinun tuoteryhmältäsi
+          </h2>
+          <p style={{ ...bodyText, textAlign: 'center', maxWidth: '620px', margin: '0 auto 2.5rem' }}>
+            Kun valitset tuoteluokan, tuotetietosi tarkistetaan automaattisesti yli 40:tä EU-vaatimusta
+            vasten (mm. ESPR, GPSR, REACH ja tekstiilien kuitumerkinnät) — ja näet suomeksi, mitä vielä puuttuu.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+            {CATEGORIES.map(cat => (
+              <div key={cat.name} style={{ ...card, padding: '1.25rem 1.5rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--c-text-1)', marginBottom: '0.35rem' }}>{cat.name}</div>
+                <div style={{ fontSize: '12px', color: 'var(--c-text-3)' }}>{cat.timeline}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--c-text-3)', textAlign: 'center', maxWidth: '560px', margin: '0 auto 2rem', lineHeight: 1.6 }}>
+            Aikataulut perustuvat EU:n tämänhetkiseen valmisteluun ja tarkentuvat täytäntöönpanosäädösten myötä.
+            Tarkistus tukee valmistautumista — se ei korvaa juridista arviota.
+          </p>
+          <div style={{ textAlign: 'center' }}>
+            <Link href="/sign-up" style={ctaPrimary}>Hae beta-käyttäjäksi</Link>
           </div>
         </section>
 
