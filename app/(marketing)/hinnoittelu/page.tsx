@@ -3,6 +3,7 @@ import Link from 'next/link';
 export const metadata = {
   title: 'Hinnoittelu – Tuotepassi',
   description: 'Yksinkertainen kuukausihinta ilman piilomaksuja. Beta-vaiheessa laskutus manuaalisesti.',
+  alternates: { canonical: '/hinnoittelu' },
 };
 
 const PLANS = [
