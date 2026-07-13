@@ -12,7 +12,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <Link href="/hinnoittelu" style={{ fontSize: '13px', color: 'var(--c-text-2)', textDecoration: 'none' }}>Hinnoittelu</Link>
             <Link href="/sign-in" style={{ fontSize: '13px', color: 'var(--c-text-2)', textDecoration: 'none' }}>Kirjaudu</Link>
             <Link href="/sign-up" style={{ fontSize: '13px', fontWeight: 600, padding: '6px 16px', background: 'var(--c-accent)', color: '#fff', borderRadius: '6px', textDecoration: 'none' }}>
-              Aloita ilmaiseksi
+              Hae beta-käyttäjäksi
             </Link>
           </nav>
         </div>
