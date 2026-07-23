@@ -162,14 +162,14 @@ export default function NewProductPage() {
                   <option value="cat_other">Muu tuoteryhmä</option>
                 </select>
               </Field>
-              <Field label="Tunnistetaso" hint="model = tuotemalli (yleisin). batch = tuote-erä. item = yksittäinen tuote.">
+              <Field label="Tunnistetaso" hint="Koskeeko tuotepassi koko tuotemallia (yleisin), tiettyä valmistuserää vai yksittäistä tuotekappaletta.">
                 <select style={inp} value={form.identifier_level} onChange={set('identifier_level')}>
-                  <option value="model">model — tuotemalli</option>
-                  <option value="batch">batch — tuote-erä</option>
-                  <option value="item">item — yksittäinen</option>
+                  <option value="model">Tuotemalli</option>
+                  <option value="batch">Tuote-erä</option>
+                  <option value="item">Yksittäinen tuote</option>
                 </select>
               </Field>
-              <Field label="Tiedonkantaja" hint="Miten kuluttaja lukee tuotepassin? Yleensä QR-koodi.">
+              <Field label="Tiedonkantaja" hint="Tapa, jolla tuotepassi liitetään fyysiseen tuotteeseen ja jonka asiakas lukee — yleensä QR-koodi. Muita vaihtoehtoja ovat esimerkiksi NFC-siru.">
                 <select style={inp} value={form.data_carrier_type} onChange={set('data_carrier_type')}>
                   <option value="qr">QR-koodi</option>
                   <option value="nfc">NFC-siru</option>

@@ -47,13 +47,12 @@ export default function PublicLinkQr({
     link.click();
   }, [slug]);
 
-  // Unpublished / no public address yet â€” never render a broken QR.
+  // Unpublished / no public address yet — never render a broken QR.
   if (!url) {
     return (
       <div style={{ padding: '16px' }}>
         <p data-testid="qr-not-published" style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.6, margin: 0 }}>
-          Julkaise tuote ensin, niin saat QR-koodin. QR-koodi vie tuotteen julkiseen
-          tuotepassiin, joka nÃ¤kyy asiakkaille vasta julkaisun jÃ¤lkeen.
+          Julkaise tuote ensin, niin saat QR-koodin. Tuotepassi ei näy julkisesti ennen julkaisua.
         </p>
       </div>
     );
@@ -62,51 +61,23 @@ export default function PublicLinkQr({
   return (
     <div style={{ padding: '16px' }}>
       <p style={{ fontSize: '13px', color: 'var(--c-text-2)', marginBottom: '14px', lineHeight: 1.6 }}>
-        Tulosta tÃ¤mÃ¤ QR-koodi tuotteeseen tai pakkaukseen. Asiakas nÃ¤kee tuotteen
-        julkisen tuotepassin skannaamalla koodin puhelimella.
+        Tämä QR-koodi avaa tuotteen julkisen tuotepassin. Voit tulostaa koodin tuotteeseen,
+        etikettiin tai pakkaukseen. Asiakas avaa tuotepassin skannaamalla koodin puhelimellaan.
       </p>
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <div
-          ref={wrapRef}
-          style={{ background: '#ffffff', padding: '10px', borderRadius: '8px', border: '1px solid var(--c-border)', lineHeight: 0 }}
-        >
-          <QRCodeCanvas
-            value={url}
-            size={QR_PRINT_PX}
-            marginSize={QR_QUIET_ZONE_MODULES}
-            level="M"
-            bgColor="#ffffff"
-            fgColor="#000000"
-            style={{ width: QR_DISPLAY_PX, height: QR_DISPLAY_PX }}
-            title="Tuotepassin QR-koodi"
-          />
+        <div ref={wrapRef} style={{ background: '#ffffff', padding: '10px', borderRadius: '8px', border: '1px solid var(--c-border)', lineHeight: 0 }}>
+          <QRCodeCanvas value={url} size={QR_PRINT_PX} marginSize={QR_QUIET_ZONE_MODULES} level="M" bgColor="#ffffff" fgColor="#000000" style={{ width: QR_DISPLAY_PX, height: QR_DISPLAY_PX }} title="Tuotepassin QR-koodi" />
         </div>
 
         <div style={{ flex: 1, minWidth: 240 }}>
-          <div style={{ fontSize: '12px', color: 'var(--c-text-3)', marginBottom: '6px' }}>Julkinen osoite</div>
+          <div style={{ fontSize: '12px', color: 'var(--c-text-3)', marginBottom: '6px' }}>Julkisen tuotepassin osoite</div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <input
-              readOnly
-              data-testid="qr-url"
-              value={url}
-              onClick={(e) => (e.target as HTMLInputElement).select()}
-              style={inputStyle}
-            />
-            <button type="button" onClick={() => navigator.clipboard.writeText(url)} style={{ ...smallBtn, cursor: 'pointer' }}>
-              Kopioi
-            </button>
-            <a href={url} target="_blank" rel="noopener noreferrer" style={smallBtn}>â†—</a>
+            <input readOnly data-testid="qr-url" value={url} onClick={(e) => (e.target as HTMLInputElement).select()} style={inputStyle} />
+            <button type="button" onClick={() => navigator.clipboard.writeText(url)} style={{ ...smallBtn, cursor: 'pointer' }}>Kopioi</button>
+            <a href={url} target="_blank" rel="noopener noreferrer" style={smallBtn} aria-label="Avaa julkinen tuotepassi uudessa välilehdessä">↗</a>
           </div>
-          <button
-            type="button"
-            onClick={downloadPng}
-            style={{
-              fontSize: '13px', fontWeight: 600, padding: '10px 16px',
-              border: '1px solid var(--c-accent)', borderRadius: '8px',
-              background: 'var(--c-accent)', color: '#fff', cursor: 'pointer',
-            }}
-          >
+          <button type="button" onClick={downloadPng} style={{ fontSize: '13px', fontWeight: 600, padding: '10px 16px', border: '1px solid var(--c-accent)', borderRadius: '8px', background: 'var(--c-accent)', color: '#fff', cursor: 'pointer' }}>
             Lataa QR-koodi PNG-muodossa
           </button>
         </div>

@@ -1,9 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
 import { getTenantSelf, ApiError } from '@/lib/api';
 
-const PLAN_LABEL: Record<string, string> = { free: 'Free', starter: 'Starter', pro: 'Pro', enterprise: 'Enterprise' };
-const STATUS_LABEL: Record<string, string> = { trial: 'Trial', active: 'Aktiivinen', suspended: 'Jäädytetty', inactive: 'Inaktiivinen' };
-const BILLING_LABEL: Record<string, string> = { active: 'Aktiivinen', past_due: 'Myöhässä', canceled: 'Peruutettu', trialing: 'Trial' };
+const PLAN_LABEL: Record<string, string> = { free: 'Ilmainen', starter: 'Starter', pro: 'Pro', enterprise: 'Enterprise' };
+const STATUS_LABEL: Record<string, string> = { trial: 'Kokeilu', active: 'Aktiivinen', suspended: 'Jäädytetty', inactive: 'Inaktiivinen' };
+const BILLING_LABEL: Record<string, string> = { active: 'Aktiivinen', past_due: 'Myöhässä', canceled: 'Peruutettu', trialing: 'Kokeilu' };
 
 export default async function SettingsPage() {
   const { orgId, getToken } = await auth();

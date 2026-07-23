@@ -8,6 +8,8 @@ import PublicLinkQr from '@/components/PublicLinkQr';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 const TABS = ['Perustiedot', 'Listat', 'Käännökset', 'Dokumentit', 'Jakaminen', 'EU-vaatimukset'] as const;
+// Display labels only — internal tab keys above stay stable (ids, state, FIELD_TAB).
+const TAB_LABELS: Record<string, string> = { Listat: 'Materiaalit ja ohjeet', Jakaminen: 'Jakaminen ja QR' };
 
 const FIELD_TAB: Record<string, typeof TABS[number]> = {
   product_name: 'Perustiedot', brand_name: 'Perustiedot', product_type: 'Perustiedot',
@@ -272,7 +274,7 @@ export default function ProductPage() {
             tabIndex={tab === t ? 0 : -1}
             onClick={() => { setTab(t); setMsg(null); if (t === 'EU-vaatimukset') fetchCompliance(); }}
             style={{ fontSize: '13px', fontWeight: 500, padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', borderBottom: tab === t ? '2px solid var(--c-accent)' : '2px solid transparent', color: tab === t ? 'var(--c-accent)' : 'var(--c-text-2)', marginBottom: '-1px' }}>
-            {t}
+            {TAB_LABELS[t] ?? t}
           </button>
         ))}
       </div>
@@ -306,7 +308,7 @@ export default function ProductPage() {
                   <p style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '4px' }}>Katuosoite ei ole pakollinen — kaupunki ja maa riittää (esim. Helsinki, Suomi). Tämä tieto näkyy julkisella tuotepassisivulla.</p>
                 </Field>
               </Card>
-              <Card title="Vastuullinen operaattori (EU)">
+              <Card title="Vastuullinen toimija (EU)">
                 <Field label="Nimi"><input style={inp} value={basic.responsible_operator_name} onChange={setBasicField('responsible_operator_name')} /></Field>
                 <Field label="Sähköposti"><input type="email" style={inp} value={basic.responsible_operator_email} onChange={setBasicField('responsible_operator_email')} /></Field>
                 <Field label="Osoite">
@@ -316,15 +318,22 @@ export default function ProductPage() {
               </Card>
             </div>
             <div>
-              <Card title="Tila">
-                <Field label="Julkaisutila">
+              <Card title="Julkaisu">
+                <Field label="Julkaisun tila">
                   <select style={inp} value={basic.status} onChange={setBasicField('status')}>
                     <option value="draft">Luonnos</option>
                     <option value="active">Julkaistu</option>
                     <option value="archived">Arkistoitu</option>
                   </select>
+                  <p style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '6px', lineHeight: 1.6 }}>
+                    {basic.status === 'active'
+                      ? 'Tuotepassi on julkinen ja sen QR-koodi sekä julkinen osoite toimivat.'
+                      : basic.status === 'archived'
+                      ? 'Tuotepassi on arkistoitu eikä näy julkisesti.'
+                      : 'Tuotepassi ei näy julkisesti. Valitse Julkaistu ja tallenna, niin tuotepassi ja sen QR-koodi tulevat käyttöön.'}
+                  </p>
                 </Field>
-                <Field label="Vaatimustenmukaisuus (EU ESPR)">
+                <Field label="EU-vaatimusten tila (ESPR)">
                   <select style={inp} value={basic.compliance_status} onChange={setBasicField('compliance_status')}>
                     <option value="not_started">Ei aloitettu</option>
                     <option value="in_progress">Kesken</option>
@@ -436,7 +445,13 @@ export default function ProductPage() {
       {tab === 'Dokumentit' && (
         <div role="tabpanel" id="tabpanel-Dokumentit" aria-labelledby="tab-Dokumentit">
           <Card title="Tiedostot">
-            {docs.length === 0 && <div style={{ padding: '16px', fontSize: '13px', color: 'var(--c-text-3)' }}>Ei tiedostoja.</div>}
+            {docs.length === 0 && (
+              <div style={{ padding: '16px', fontSize: '13px', color: 'var(--c-text-3)', lineHeight: 1.6 }}>
+                Ei vielä tiedostoja. Voit tallentaa tähän tuotteeseen liittyviä asiakirjoja — esimerkiksi
+                sertifikaatteja, vaatimustenmukaisuusvakuutuksia tai käyttö- ja hoito-ohjeita. Kaikki eivät ole
+                pakollisia; lisää ne, jotka tuotteellesi ovat oleellisia.
+              </div>
+            )}
             {docs.map((d, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)' }}>
                 <span style={{ flex: 1, fontFamily: 'monospace', fontSize: '12px', color: 'var(--c-text-2)', wordBreak: 'break-all' }}>{d.name}</span>
@@ -455,13 +470,16 @@ export default function ProductPage() {
       {/* ── Jakaminen ── */}
       {tab === 'Jakaminen' && (
         <div role="tabpanel" id="tabpanel-Jakaminen" aria-labelledby="tab-Jakaminen">
-          <Card title="Julkinen linkki">
+          <Card title="Julkinen tuotepassi">
             <PublicLinkQr apiBase={API} slug={product.public_slug} />
           </Card>
 
-          <Card title="Jakolinkki (omistajan näkymä)">
+          <Card title="Muokkauslinkki">
             <div style={{ padding: '16px' }}>
-              <p style={{ fontSize: '13px', color: 'var(--c-text-2)', marginBottom: '10px' }}>Tällä linkillä pääsee muokkaamaan tuotetta ilman kirjautumista. Voidaan uusia, jolloin vanha lakkaa toimimasta.</p>
+              <p style={{ fontSize: '13px', color: 'var(--c-text-2)', marginBottom: '10px', lineHeight: 1.6 }}>
+                Tällä linkillä pääsee tuotteen omistajan näkymään. Älä jaa linkkiä julkisesti. Jaa se vain
+                henkilölle, jolle haluat antaa pääsyn tähän näkymään. Voit luoda uuden linkin, jolloin vanha lakkaa toimimasta.
+              </p>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <input readOnly style={{ ...inp, fontFamily: 'monospace', fontSize: '12px', flex: 1 }} value={shareUrl || `${API}/owner/${product.owner_token}`} onClick={e => (e.target as HTMLInputElement).select()} />
                 <button type="button" onClick={() => navigator.clipboard.writeText(shareUrl || `${API}/owner/${product.owner_token}`)} style={{ fontSize: '12px', padding: '7px 12px', border: '1px solid var(--c-border)', borderRadius: '6px', background: 'var(--c-surface-2)', cursor: 'pointer', color: 'var(--c-text-2)' }}>Kopioi</button>
@@ -491,11 +509,15 @@ export default function ProductPage() {
                 </p>
               )}
               {!complianceError && (
-                <p style={{ fontSize: '14px', color: 'var(--c-text-3)', marginBottom: '16px' }}>Vaatimustenmukaisuustarkistus ei latautunut.</p>
+                <p style={{ fontSize: '13px', color: 'var(--c-text-2)', marginBottom: '16px', lineHeight: 1.6, maxWidth: '460px', marginLeft: 'auto', marginRight: 'auto' }}>
+                  EU-vaatimusten tarkistus käy läpi, mitä tietoja tuotepassistasi EU-vaatimukset edellyttävät —
+                  esimerkiksi materiaalit, vastuullisen toimijan ja turvallisuustiedot — ja näyttää, mitä vielä puuttuu.
+                  Jos jokin puuttuu, täydennä tiedot Perustiedot- ja Materiaalit ja ohjeet -välilehdillä ja tee tarkistus uudelleen.
+                </p>
               )}
               <br />
               <button onClick={fetchCompliance} style={{ fontSize: '13px', padding: '8px 20px', background: 'var(--c-accent)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-                {complianceError ? 'Yritä uudelleen' : 'Lataa tarkistus'}
+                {complianceError ? 'Yritä uudelleen' : 'Tarkista EU-vaatimukset'}
               </button>
             </div>
           )}

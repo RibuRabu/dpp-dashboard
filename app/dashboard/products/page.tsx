@@ -84,7 +84,10 @@ export default async function ProductsPage() {
         <div
           style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '12px', padding: '48px', textAlign: 'center' }}
         >
-          <p style={{ color: 'var(--c-text-3)', fontSize: '14px' }}>Ei tuotteita vielä.</p>
+          <p style={{ color: 'var(--c-text-2)', fontSize: '14px', lineHeight: 1.6, maxWidth: '420px', margin: '0 auto' }}>
+            Ei vielä tuotteita. Tuotepassi kokoaa tuotteesi tiedot yhteen julkiseen näkymään, jonka asiakas
+            avaa QR-koodilla. Aloita luomalla ensimmäinen tuote.
+          </p>
           <Link
             href="/dashboard/products/new"
             style={{ display: 'inline-block', marginTop: '16px', color: 'var(--c-accent)', fontSize: '13px' }}
@@ -97,7 +100,7 @@ export default async function ProductsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface-2)' }}>
-                {['Tuote', 'Tila', 'Versio', 'Päivitetty', ''].map(h => (
+                {['Tuote', 'Tila', 'Päivitetty', ''].map(h => (
                   <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 500, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--c-text-3)' }}>
                     {h}
                   </th>
@@ -116,7 +119,6 @@ export default async function ProductsPage() {
                       {statusLabel(p.status)}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--c-text-3)' }}>v{p.version}</td>
                   <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--c-text-3)' }}>{fmtDate(p.updated_at)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     <Link

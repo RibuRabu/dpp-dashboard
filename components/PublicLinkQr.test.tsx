@@ -16,7 +16,7 @@ describe('publicPassportUrl', () => {
   });
 });
 
-describe('PublicLinkQr â€” published product', () => {
+describe('PublicLinkQr — published product', () => {
   it('renders a QR code (canvas) for a valid public URL', () => {
     render(<PublicLinkQr apiBase={API} slug="esimerkki" />);
     expect(document.querySelector('canvas')).not.toBeNull();
@@ -38,7 +38,7 @@ describe('PublicLinkQr â€” published product', () => {
   });
 });
 
-describe('PublicLinkQr â€” unpublished product', () => {
+describe('PublicLinkQr — unpublished product', () => {
   it('does not render a QR when public_slug is missing', () => {
     render(<PublicLinkQr apiBase={API} slug="" />);
     expect(document.querySelector('canvas')).toBeNull();
