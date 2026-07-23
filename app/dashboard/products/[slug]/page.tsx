@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getProduct, updateProduct, deleteProduct, regenerateShareLink, getCompliance, parseJson, statusLabel, statusColor, fmtDate, Product, ComplianceResult, ApiError, NetworkError } from '@/lib/api';
+import PublicLinkQr from '@/components/PublicLinkQr';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 const TABS = ['Perustiedot', 'Listat', 'Käännökset', 'Dokumentit', 'Jakaminen', 'EU-vaatimukset'] as const;
@@ -455,14 +456,7 @@ export default function ProductPage() {
       {tab === 'Jakaminen' && (
         <div role="tabpanel" id="tabpanel-Jakaminen" aria-labelledby="tab-Jakaminen">
           <Card title="Julkinen linkki">
-            <div style={{ padding: '16px' }}>
-              <p style={{ fontSize: '13px', color: 'var(--c-text-2)', marginBottom: '10px' }}>Tämä linkki on stabiili — QR-koodit osoittavat tähän.</p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input readOnly style={{ ...inp, fontFamily: 'monospace', fontSize: '12px', flex: 1 }} value={`${API}/p/${product.public_slug}`} onClick={e => (e.target as HTMLInputElement).select()} />
-                <button type="button" onClick={() => navigator.clipboard.writeText(`${API}/p/${product.public_slug}`)} style={{ fontSize: '12px', padding: '7px 12px', border: '1px solid var(--c-border)', borderRadius: '6px', background: 'var(--c-surface-2)', cursor: 'pointer', color: 'var(--c-text-2)' }}>Kopioi</button>
-                <a href={`${API}/p/${product.public_slug}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', padding: '7px 12px', border: '1px solid var(--c-border)', borderRadius: '6px', background: 'var(--c-surface-2)', color: 'var(--c-text-2)', textDecoration: 'none' }}>↗</a>
-              </div>
-            </div>
+            <PublicLinkQr apiBase={API} slug={product.public_slug} />
           </Card>
 
           <Card title="Jakolinkki (omistajan näkymä)">
