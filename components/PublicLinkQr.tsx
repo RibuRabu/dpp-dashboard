@@ -61,8 +61,8 @@ export default function PublicLinkQr({
   return (
     <div style={{ padding: '16px' }}>
       <p style={{ fontSize: '13px', color: 'var(--c-text-2)', marginBottom: '14px', lineHeight: 1.6 }}>
-        Tämä QR-koodi avaa tuotteen julkisen tuotepassin. Voit tulostaa koodin tuotteeseen,
-        etikettiin tai pakkaukseen. Asiakas avaa tuotepassin skannaamalla koodin puhelimellaan.
+        QR-koodi ja julkinen osoite vievät asiakkaan tämän tuotteen julkiseen tuotepassiin. Asiakas avaa passin
+        skannaamalla koodin puhelimellaan. Voit lisätä QR-koodin esimerkiksi tuotteeseen, etikettiin, pakkaukseen tai käyttöohjeeseen.
       </p>
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -71,7 +71,7 @@ export default function PublicLinkQr({
         </div>
 
         <div style={{ flex: 1, minWidth: 240 }}>
-          <div style={{ fontSize: '12px', color: 'var(--c-text-3)', marginBottom: '6px' }}>Julkisen tuotepassin osoite</div>
+          <div style={{ fontSize: '12px', color: 'var(--c-text-3)', marginBottom: '6px' }}>Julkisen tuotepassin osoite — voit jakaa tämän vapaasti</div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             <input readOnly data-testid="qr-url" value={url} onClick={(e) => (e.target as HTMLInputElement).select()} style={inputStyle} />
             <button type="button" onClick={() => navigator.clipboard.writeText(url)} style={{ ...smallBtn, cursor: 'pointer' }}>Kopioi</button>

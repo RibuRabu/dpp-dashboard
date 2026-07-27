@@ -4,6 +4,7 @@ import { useAuth, useOrganization } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { createProduct, apiErrMsg, NetworkError } from '@/lib/api';
 import Link from 'next/link';
+import VisibilityNote from '@/components/VisibilityNote';
 
 function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
   return (
@@ -129,6 +130,7 @@ export default function NewProductPage() {
             </Card>
 
             <Card title="Valmistaja" subtitle="EU ESPR -asetus edellyttää valmistajan tietoja tuotepassissa">
+              <div style={{ padding: '10px 16px 0' }}><VisibilityNote scope="public" /></div>
               <Field label="Valmistajan nimi">
                 <input style={inp} value={form.manufacturer_name} onChange={set('manufacturer_name')} placeholder="esim. Luonto Tekstiilit Oy" />
               </Field>
@@ -140,7 +142,11 @@ export default function NewProductPage() {
               </Field>
             </Card>
 
-            <Card title="Asiakas (sisäinen tieto)" subtitle="Ei näy kuluttajille — vain hallintapaneelissa">
+            <Card title="Asiakas (sisäinen tieto)" subtitle="Näitä tietoja ei julkaista tuotepassissa">
+              <div style={{ padding: '10px 16px 0' }}>
+                <VisibilityNote scope="private" />
+                <p style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '8px', lineHeight: 1.5 }}>Vain omaan käyttöösi, esimerkiksi sen muistamiseen, kuka tilasi tämän tuotepassin.</p>
+              </div>
               <Field label="Asiakkaan nimi" hint="Kirjaa kuka tilasi tämän tuotepassin.">
                 <input style={inp} value={form.customer_name} onChange={set('customer_name')} placeholder="esim. Luonto Tekstiilit Oy" />
               </Field>
@@ -162,20 +168,30 @@ export default function NewProductPage() {
                   <option value="cat_other">Muu tuoteryhmä</option>
                 </select>
               </Field>
-              <Field label="Tunnistetaso" hint="Koskeeko tuotepassi koko tuotemallia (yleisin), tiettyä valmistuserää vai yksittäistä tuotekappaletta.">
+              <Field label="Tunnistetaso" hint="Tunnistetaso kertoo, kuinka tarkasti tuotepassi yksilöi tuotteen.">
                 <select style={inp} value={form.identifier_level} onChange={set('identifier_level')}>
                   <option value="model">Tuotemalli</option>
                   <option value="batch">Tuote-erä</option>
                   <option value="item">Yksittäinen tuote</option>
                 </select>
+                <p style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '6px', lineHeight: 1.6 }}>
+                  {form.identifier_level === 'batch'
+                    ? 'Tuote-erä: tuotepassi koskee tiettyä valmistus- tai tuotantoerää. Sopii, jos eri erien tiedot voivat poiketa toisistaan.'
+                    : form.identifier_level === 'item'
+                    ? 'Yksittäinen tuote: jokaisella fyysisellä tuotteella on oma tuotepassinsa. Sopii tuotteisiin, jotka halutaan yksilöidä kappalekohtaisesti.'
+                    : 'Tuotemalli: sama tuotepassi koskee kaikkia saman mallin tuotteita. Sopii esimerkiksi vaatemallille, jota valmistetaan useita kappaleita.'}
+                </p>
               </Field>
-              <Field label="Tiedonkantaja" hint="Tapa, jolla tuotepassi liitetään fyysiseen tuotteeseen ja jonka asiakas lukee — yleensä QR-koodi. Muita vaihtoehtoja ovat esimerkiksi NFC-siru.">
+              <Field label="Tunnistustapa" hint="Tunnistustapa kertoo, miten asiakas avaa tuotepassin fyysisestä tuotteesta tai pakkauksesta.">
                 <select style={inp} value={form.data_carrier_type} onChange={set('data_carrier_type')}>
                   <option value="qr">QR-koodi</option>
                   <option value="nfc">NFC-siru</option>
                   <option value="rfid">RFID</option>
                   <option value="barcode">Viivakoodi</option>
                 </select>
+                <p style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '6px', lineHeight: 1.6 }}>
+                  QR-koodi voidaan tulostaa esimerkiksi etikettiin, pakkaukseen tai tuotteeseen. NFC-siru on toinen mahdollinen tunnistustapa.
+                </p>
               </Field>
             </Card>
 

@@ -5,11 +5,15 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getProduct, updateProduct, deleteProduct, regenerateShareLink, getCompliance, parseJson, statusLabel, statusColor, fmtDate, Product, ComplianceResult, ApiError, NetworkError } from '@/lib/api';
 import PublicLinkQr from '@/components/PublicLinkQr';
+import VisibilityNote from '@/components/VisibilityNote';
+import { ruleLabel, ruleActionTitle, scoreLabel } from '@/lib/compliance-labels';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 const TABS = ['Perustiedot', 'Listat', 'Käännökset', 'Dokumentit', 'Jakaminen', 'EU-vaatimukset'] as const;
 // Display labels only — internal tab keys above stay stable (ids, state, FIELD_TAB).
 const TAB_LABELS: Record<string, string> = { Listat: 'Materiaalit ja ohjeet', Jakaminen: 'Jakaminen ja QR' };
+// Human labels for the stored identifier level (values model/batch/item unchanged).
+const IDENTIFIER_LABELS: Record<string, string> = { model: 'Tuotemalli', batch: 'Tuote-erä', item: 'Yksittäinen tuote' };
 
 const FIELD_TAB: Record<string, typeof TABS[number]> = {
   product_name: 'Perustiedot', brand_name: 'Perustiedot', product_type: 'Perustiedot',
@@ -191,7 +195,7 @@ export default function ProductPage() {
   }
 
   async function regen() {
-    if (!confirm('Uusi jakolinkki korvaa vanhan. Vanha QR/linkki lakkaa toimimasta. Jatketaan?')) return;
+    if (!confirm('Uuden muokkauslinkin luominen poistaa vanhan linkin käytöstä. Jatketaanko?')) return;
     setSaving(true); setMsg(null);
     try {
       const token = await getToken();
@@ -229,7 +233,18 @@ export default function ProductPage() {
   const transFor = (lang: string): Record<string, unknown> => translations[lang] || {};
   const setTrans = (lang: string, key: string, val: unknown) => { markDirty(); setTranslations(t => ({ ...t, [lang]: { ...(t[lang] || {}), [key]: val } })); };
 
-  const LANGS = [{ code: 'en', label: 'English' }, { code: 'sv', label: 'Svenska' }, { code: 'de', label: 'Deutsch' }, { code: 'fr', label: 'Français' }];
+  // Languages the backend actually stores (Worker SUPPORTED_LANGS). Other codes are
+  // silently dropped on save, so the UI must not offer them.
+  const LANGS = [
+    { code: 'en', label: 'English' },
+    { code: 'sv', label: 'Svenska' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'fr', label: 'Français' },
+    { code: 'et', label: 'Eesti' },
+    { code: 'lv', label: 'Latviešu' },
+    { code: 'lt', label: 'Lietuvių' },
+    { code: 'pl', label: 'Polski' },
+  ];
 
   return (
     <div>
@@ -292,6 +307,8 @@ export default function ProductPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
               <Card title="Tuotetiedot">
+                <div style={{ padding: '10px 16px 0' }}><VisibilityNote scope="public" /></div>
+                <div style={{ fontSize: '11px', color: 'var(--c-text-3)', padding: '6px 16px 0', lineHeight: 1.5 }}>Nimi, brändi ja tuotetyyppi näkyvät julkisessa tuotepassissa. Alla olevat tunnistenumerot (SKU, GTIN, erä- ja sarjanumero) ovat vain omaan käyttöösi.</div>
                 <Field label="Tuotteen nimi *"><input required style={inp} value={basic.product_name} onChange={setBasicField('product_name')} /></Field>
                 <Field label="Brändi"><input style={inp} value={basic.brand_name} onChange={setBasicField('brand_name')} /></Field>
                 <Field label="Tuotetyyppi"><input style={inp} value={basic.product_type} onChange={setBasicField('product_type')} /></Field>
@@ -301,6 +318,7 @@ export default function ProductPage() {
                 <Field label="Sarjanumero"><input style={inp} value={basic.serial_number} onChange={setBasicField('serial_number')} /></Field>
               </Card>
               <Card title="Valmistaja">
+                <div style={{ padding: '10px 16px 0' }}><VisibilityNote scope="public" /></div>
                 <Field label="Nimi"><input style={inp} value={basic.manufacturer_name} onChange={setBasicField('manufacturer_name')} /></Field>
                 <Field label="Sähköposti"><input type="email" style={inp} value={basic.manufacturer_email} onChange={setBasicField('manufacturer_email')} /></Field>
                 <Field label="Osoite">
@@ -309,6 +327,7 @@ export default function ProductPage() {
                 </Field>
               </Card>
               <Card title="Vastuullinen toimija (EU)">
+                <div style={{ padding: '10px 16px 0' }}><VisibilityNote scope="public" /></div>
                 <Field label="Nimi"><input style={inp} value={basic.responsible_operator_name} onChange={setBasicField('responsible_operator_name')} /></Field>
                 <Field label="Sähköposti"><input type="email" style={inp} value={basic.responsible_operator_email} onChange={setBasicField('responsible_operator_email')} /></Field>
                 <Field label="Osoite">
@@ -370,24 +389,27 @@ export default function ProductPage() {
                 </Field>
               </Card>
 
-              <Card title="Tunnisteet">
-                <div style={row}>
-                  <div style={lbl}>product_uid</div>
-                  <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--c-accent)', wordBreak: 'break-all' }}>{product.product_uid}</code>
+              <details style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
+                <summary style={{ cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--c-text-2)', padding: '14px 16px' }}>Tekniset tiedot</summary>
+                <div style={{ padding: '0 16px 6px' }}>
+                  <div style={row}>
+                    <div style={lbl}>Tunnistetaso</div>
+                    <span style={{ fontSize: '13px', color: 'var(--c-text-2)' }}>{IDENTIFIER_LABELS[product.identifier_level] ?? product.identifier_level}</span>
+                  </div>
+                  <div style={row}>
+                    <div style={lbl}>Julkinen tunniste</div>
+                    <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--c-text-2)', wordBreak: 'break-all' }}>{product.public_slug}</code>
+                  </div>
+                  <div style={row}>
+                    <div style={lbl}>Tuotteen tunniste</div>
+                    <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--c-text-3)', wordBreak: 'break-all' }}>{product.product_uid}</code>
+                  </div>
+                  <div style={row}>
+                    <div style={lbl}>Passin tunniste</div>
+                    <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--c-text-3)', wordBreak: 'break-all' }}>{product.passport_uid}</code>
+                  </div>
                 </div>
-                <div style={row}>
-                  <div style={lbl}>passport_uid</div>
-                  <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--c-accent)', wordBreak: 'break-all' }}>{product.passport_uid}</code>
-                </div>
-                <div style={row}>
-                  <div style={lbl}>public_slug</div>
-                  <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--c-text-2)' }}>{product.public_slug}</code>
-                </div>
-                <div style={row}>
-                  <div style={lbl}>identifier_level</div>
-                  <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--c-text-2)' }}>{product.identifier_level}</code>
-                </div>
-              </Card>
+              </details>
               <button type="submit" disabled={saving} style={{ width: '100%', background: 'var(--c-accent)', color: '#fff', fontSize: '14px', fontWeight: 500, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
                 {saving ? 'Tallennetaan...' : 'Tallenna'}
               </button>
@@ -399,6 +421,13 @@ export default function ProductPage() {
       {/* ── Listat ── */}
       {tab === 'Listat' && (
         <form role="tabpanel" id="tabpanel-Listat" aria-labelledby="tab-Listat" onSubmit={saveLists}>
+          <div style={{ marginBottom: '16px' }}>
+            <VisibilityNote scope="public" />
+            <p style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.6, marginTop: '8px', maxWidth: '640px' }}>
+              Nämä tiedot auttavat asiakasta käyttämään, huoltamaan, korjaamaan ja kierrättämään tuotteen oikein.
+              Ne näkyvät julkisessa tuotepassissa. Täytä ne kohdat, jotka tuotteellesi ovat oleellisia — esimerkit ovat vain esimerkkejä, eivät vaatimuksia.
+            </p>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {([['Materiaalit', 'materials', 'esim. 97% merinovilla'], ['Aineet / yhdisteet', 'substances', 'esim. REACH-yhteensopivat väriaineet'], ['Hoito-ohjeet', 'care_instructions', 'esim. Pese 30°C villaohjelma'], ['Korjausohjeet', 'repair_instructions', 'esim. Käytä villaneulan korjaussarjaa'], ['Kierrätysohjeet', 'recycling_instructions', 'esim. Toimita tekstiilikeräykseen'], ['Turvallisuustiedot', 'safety_notes', 'esim. Soveltuu sensitiiviselle iholle']] as [string, keyof typeof lists, string][]).map(([label, key, ph]) => (
               <Card key={key} title={label}>
@@ -409,7 +438,7 @@ export default function ProductPage() {
             ))}
           </div>
           <button type="submit" disabled={saving} style={{ background: 'var(--c-accent)', color: '#fff', fontSize: '14px', fontWeight: 500, padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Tallennetaan...' : 'Tallenna listat'}
+            {saving ? 'Tallennetaan...' : 'Tallenna tiedot'}
           </button>
         </form>
       )}
@@ -417,7 +446,14 @@ export default function ProductPage() {
       {/* ── Käännökset ── */}
       {tab === 'Käännökset' && (
         <form role="tabpanel" id="tabpanel-Käännökset" aria-labelledby="tab-Käännökset" onSubmit={saveTranslations}>
-          <div className="flex gap-2 mb-4">
+          <div style={{ marginBottom: '16px' }}>
+            <VisibilityNote scope="public" />
+            <p style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.6, marginTop: '8px', maxWidth: '640px' }}>
+              Lisää käännökset niille kielille, joita tarvitset tuotteen kohdemarkkinoilla. Kaikkia kieliä ei tarvitse
+              täyttää. Käännökset näkyvät julkisessa tuotepassissa: asiakas voi lukea tuotepassin omalla kielellään.
+            </p>
+          </div>
+          <div className="flex gap-2 mb-4" style={{ flexWrap: 'wrap' }}>
             {LANGS.map(l => (
               <button key={l.code} type="button" onClick={() => setActiveLang(l.code)}
                 style={{ fontSize: '12px', fontWeight: 500, padding: '5px 12px', borderRadius: '6px', border: '1px solid', cursor: 'pointer', background: activeLang === l.code ? 'var(--c-accent)' : 'var(--c-surface)', color: activeLang === l.code ? '#fff' : 'var(--c-text-2)', borderColor: activeLang === l.code ? 'var(--c-accent)' : 'var(--c-border)' }}>
@@ -445,12 +481,16 @@ export default function ProductPage() {
       {tab === 'Dokumentit' && (
         <div role="tabpanel" id="tabpanel-Dokumentit" aria-labelledby="tab-Dokumentit">
           <Card title="Tiedostot">
+            <div style={{ padding: '12px 16px 0' }}>
+              <VisibilityNote scope="private" />
+              <p style={{ fontSize: '12px', color: 'var(--c-text-3)', marginTop: '8px', lineHeight: 1.6 }}>
+                Tänne tallennetut tiedostot säilytetään omaa käyttöäsi ja vaatimustenmukaisuuden osoittamista varten.
+                Niitä ei näytetä julkisessa tuotepassissa. Sopivia tiedostoja ovat esimerkiksi sertifikaatit,
+                vaatimustenmukaisuusvakuutukset, testiraportit ja ohjeet. Tiedostot ovat vapaaehtoisia, ellei tuotteesi erikseen edellytä niitä.
+              </p>
+            </div>
             {docs.length === 0 && (
-              <div style={{ padding: '16px', fontSize: '13px', color: 'var(--c-text-3)', lineHeight: 1.6 }}>
-                Ei vielä tiedostoja. Voit tallentaa tähän tuotteeseen liittyviä asiakirjoja — esimerkiksi
-                sertifikaatteja, vaatimustenmukaisuusvakuutuksia tai käyttö- ja hoito-ohjeita. Kaikki eivät ole
-                pakollisia; lisää ne, jotka tuotteellesi ovat oleellisia.
-              </div>
+              <div style={{ padding: '4px 16px 16px', fontSize: '13px', color: 'var(--c-text-3)' }}>Ei vielä tiedostoja.</div>
             )}
             {docs.map((d, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)' }}>
@@ -476,17 +516,20 @@ export default function ProductPage() {
 
           <Card title="Muokkauslinkki">
             <div style={{ padding: '16px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--c-warn)', marginBottom: '10px', lineHeight: 1.6, fontWeight: 500 }}>
+                🔒 Älä jaa tätä linkkiä julkisesti. Linkin saanut henkilö voi päästä tuotteen omistajan näkymään ja muokata tuotetta.
+              </p>
               <p style={{ fontSize: '13px', color: 'var(--c-text-2)', marginBottom: '10px', lineHeight: 1.6 }}>
-                Tällä linkillä pääsee tuotteen omistajan näkymään. Älä jaa linkkiä julkisesti. Jaa se vain
-                henkilölle, jolle haluat antaa pääsyn tähän näkymään. Voit luoda uuden linkin, jolloin vanha lakkaa toimimasta.
+                Jaa linkki vain henkilölle, jolle haluat antaa pääsyn tähän näkymään.
               </p>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <input readOnly style={{ ...inp, fontFamily: 'monospace', fontSize: '12px', flex: 1 }} value={shareUrl || `${API}/owner/${product.owner_token}`} onClick={e => (e.target as HTMLInputElement).select()} />
                 <button type="button" onClick={() => navigator.clipboard.writeText(shareUrl || `${API}/owner/${product.owner_token}`)} style={{ fontSize: '12px', padding: '7px 12px', border: '1px solid var(--c-border)', borderRadius: '6px', background: 'var(--c-surface-2)', cursor: 'pointer', color: 'var(--c-text-2)' }}>Kopioi</button>
               </div>
               <button type="button" onClick={regen} disabled={saving} style={{ fontSize: '13px', color: 'var(--c-warn)', background: 'none', border: '1px solid var(--c-border)', borderRadius: '6px', padding: '7px 12px', cursor: 'pointer' }}>
-                ↺ Luo uusi jakolinkki
+                Luo uusi muokkauslinkki
               </button>
+              <p style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '6px' }}>Uuden muokkauslinkin luominen poistaa vanhan linkin käytöstä.</p>
             </div>
           </Card>
 
@@ -524,6 +567,18 @@ export default function ProductPage() {
 
           {compliance && (
             <div>
+              {/* Mitä tarkistus tarkoittaa */}
+              <div style={{ background: 'var(--c-accent-dim)', border: '1px solid rgba(10,109,194,.18)', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '6px' }}>Mitä EU-vaatimusten tarkistus tarkoittaa?</div>
+                <p style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.6, margin: 0 }}>
+                  Tarkistus käy tuotepassiin syötetyt tiedot läpi ja vertaa niitä tuotteeseen soveltuviin EU-vaatimuksiin.
+                  Se auttaa löytämään puuttuvat tiedot ja asiat, jotka kannattaa vielä tarkistaa.
+                </p>
+                <p style={{ fontSize: '12px', color: 'var(--c-text-3)', lineHeight: 1.6, marginTop: '8px', marginBottom: 0 }}>
+                  Tarkistus ei korvaa viranomaisen tai asiantuntijan tekemää vaatimustenmukaisuuden arviointia.
+                </p>
+              </div>
+
               {/* Score header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '12px', padding: '20px 24px' }}>
                 <div style={{ fontSize: '52px', fontWeight: 700, lineHeight: 1, color: scoreColor(compliance.score) }}>
@@ -531,10 +586,22 @@ export default function ProductPage() {
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--c-text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '6px' }}>Pistemäärä / 100</div>
-                  <span style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '999px', border: '1px solid', color: compliance.status === 'complete' ? 'var(--c-ok)' : 'var(--c-warn)', borderColor: compliance.status === 'complete' ? 'var(--c-ok)' : 'var(--c-warn)', background: compliance.status === 'complete' ? 'rgba(34,197,94,.08)' : 'rgba(196,40,42,.06)' }}>
-                    {compliance.status === 'complete' ? 'Valmis' : 'Puutteellinen'}
+                  <span style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '999px', border: '1px solid', color: compliance.status === 'complete' ? 'var(--c-ok)' : '#d97706', borderColor: compliance.status === 'complete' ? 'var(--c-ok)' : '#d97706', background: compliance.status === 'complete' ? 'rgba(34,197,94,.08)' : 'rgba(217,119,6,.08)' }}>
+                    {scoreLabel(compliance.score, compliance.status)}
                   </span>
-                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '8px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--c-text-2)', marginTop: '8px', lineHeight: 1.5 }}>
+                    {(() => {
+                      const ok = compliance.passed.length;
+                      const todo = compliance.missing.length + compliance.warnings.length;
+                      return todo === 0
+                        ? `${ok} tarkistusta täyttyy. Ei avoimia kohtia.`
+                        : `${ok} tarkistusta täyttyy. ${todo} ${todo === 1 ? 'asia' : 'asiaa'} kannattaa vielä tarkistaa.`;
+                    })()}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '6px' }}>
+                    Pistemäärä kertoo, kuinka hyvin tuotepassiin syötetyt tiedot täyttävät järjestelmän tekemät tarkistukset.
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '6px' }}>
                     {compliance.category
                       ? `Luokka: ${CATEGORIES.find(c => c.id === `cat_${compliance.category?.toLowerCase()}`)?.label ?? compliance.category}`
                       : 'Luokka: ei asetettu'}
@@ -546,9 +613,6 @@ export default function ProductPage() {
                   <button onClick={fetchCompliance} style={{ fontSize: '12px', padding: '6px 12px', border: '1px solid var(--c-border)', borderRadius: '6px', background: 'var(--c-surface-2)', cursor: 'pointer', color: 'var(--c-text-2)' }}>
                     ↺ Päivitä
                   </button>
-                  <div style={{ fontSize: '10px', color: 'var(--c-text-3)', marginTop: '4px', textAlign: 'right' }}>
-                    {compliance.cached ? 'välimuistista' : 'juuri laskettu'} · v{compliance.product_version}
-                  </div>
                 </div>
               </div>
 
@@ -573,8 +637,8 @@ export default function ProductPage() {
                     <div key={m.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'center' }}>
                       <span style={{ color: 'var(--c-warn)', fontSize: '12px', flexShrink: 0 }}>✕</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', color: 'var(--c-text-1)' }}>{m.message_fi}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '2px', fontFamily: 'monospace' }}>{m.rule_code} · {m.regulation}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '3px' }}>{ruleActionTitle(m.rule_code)}</div>
+                        <div style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.5 }}>{m.message_fi}</div>
                       </div>
                       {m.field && FIELD_TAB[m.field] && (
                         <button onClick={() => { setTab(FIELD_TAB[m.field!]); setMsg(null); window.scrollTo(0, 0); }} style={{ fontSize: '12px', color: 'var(--c-accent)', background: 'none', border: '1px solid var(--c-border)', borderRadius: '5px', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -593,8 +657,8 @@ export default function ProductPage() {
                     <div key={w.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'center' }}>
                       <span style={{ color: '#d97706', fontSize: '12px', flexShrink: 0 }}>⚠</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', color: 'var(--c-text-1)' }}>{w.message_fi}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '2px', fontFamily: 'monospace' }}>{w.rule_code} · {w.regulation}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '3px' }}>{ruleActionTitle(w.rule_code)}</div>
+                        <div style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.5 }}>{w.message_fi}</div>
                       </div>
                       {w.field && FIELD_TAB[w.field] && (
                         <button onClick={() => { setTab(FIELD_TAB[w.field!]); setMsg(null); window.scrollTo(0, 0); }} style={{ fontSize: '12px', color: '#d97706', background: 'none', border: '1px solid var(--c-border)', borderRadius: '5px', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -613,8 +677,7 @@ export default function ProductPage() {
                     <div key={i.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                       <span style={{ color: 'var(--c-accent)', fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>ℹ</span>
                       <div>
-                        <div style={{ fontSize: '13px', color: 'var(--c-text-1)' }}>{i.message_fi}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '2px', fontFamily: 'monospace' }}>{i.rule_code} · {i.regulation}</div>
+                        <div style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.5 }}>{i.message_fi}</div>
                       </div>
                     </div>
                   ))}
@@ -623,12 +686,13 @@ export default function ProductPage() {
 
               {/* Passed */}
               {compliance.passed.length > 0 && (
-                <Card title={`Läpäistyt säännöt (${compliance.passed.length})`}>
-                  <div style={{ padding: '10px 16px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <Card title={`Kunnossa (${compliance.passed.length})`}>
+                  <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
                     {compliance.passed.map(p => (
-                      <span key={p.rule_code} style={{ fontSize: '11px', fontFamily: 'monospace', padding: '2px 8px', borderRadius: '4px', background: 'rgba(34,197,94,.08)', color: 'var(--c-ok)', border: '1px solid rgba(34,197,94,.2)' }}>
-                        {p.rule_code}
-                      </span>
+                      <div key={p.rule_code} style={{ fontSize: '13px', color: 'var(--c-text-2)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--c-ok)', flexShrink: 0 }}>✓</span>
+                        {ruleLabel(p.rule_code)}
+                      </div>
                     ))}
                   </div>
                 </Card>
@@ -637,7 +701,8 @@ export default function ProductPage() {
               {/* Regulations applied */}
               {compliance.regulations_applied.length > 0 && (
                 <div style={{ marginTop: '8px' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '8px' }}>Sovelletut asetukset</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '4px' }}>Mihin sääntöihin tarkistus perustuu?</div>
+                  <p style={{ fontSize: '12px', color: 'var(--c-text-3)', lineHeight: 1.6, marginBottom: '10px', maxWidth: '620px' }}>Tuotteen luokan ja valittujen markkinoiden perusteella tarkistuksessa huomioidaan seuraavat EU-säädökset.</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {compliance.regulations_applied.map(r => (
                       <span key={r.code} style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', border: '1px solid var(--c-border)', color: r.status === 'draft' ? '#d97706' : 'var(--c-text-2)', background: 'var(--c-surface)' }}>
