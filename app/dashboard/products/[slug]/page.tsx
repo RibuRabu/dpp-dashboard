@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { getProduct, updateProduct, deleteProduct, regenerateShareLink, getCompliance, parseJson, statusLabel, statusColor, fmtDate, Product, ComplianceResult, ApiError, NetworkError } from '@/lib/api';
 import PublicLinkQr from '@/components/PublicLinkQr';
 import VisibilityNote from '@/components/VisibilityNote';
-import { ruleLabel, ruleActionTitle, scoreLabel } from '@/lib/compliance-labels';
+import { ruleLabel, regulationLabel } from '@/lib/compliance-labels';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 const TABS = ['Perustiedot', 'Listat', 'Käännökset', 'Dokumentit', 'Jakaminen', 'EU-vaatimukset'] as const;
@@ -35,11 +35,6 @@ const CATEGORIES = [
 ];
 const MARKETS = ['EU','FI','DE','FR','SE','EE','LV','LT','PL'];
 
-function scoreColor(score: number) {
-  if (score >= 90) return 'var(--c-ok)';
-  if (score >= 70) return '#d97706';
-  return 'var(--c-warn)';
-}
 type Tab = typeof TABS[number];
 
 // ── Shared input styles ───────────────────────────────────────────────────────
@@ -567,78 +562,69 @@ export default function ProductPage() {
 
           {compliance && (
             <div>
-              {/* Mitä tarkistus tarkoittaa */}
+              {/* 1. Mitä tarkistus tarkoittaa */}
               <div style={{ background: 'var(--c-accent-dim)', border: '1px solid rgba(10,109,194,.18)', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '6px' }}>Mitä EU-vaatimusten tarkistus tarkoittaa?</div>
                 <p style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.6, margin: 0 }}>
-                  Tarkistus käy tuotepassiin syötetyt tiedot läpi ja vertaa niitä tuotteeseen soveltuviin EU-vaatimuksiin.
-                  Se auttaa löytämään puuttuvat tiedot ja asiat, jotka kannattaa vielä tarkistaa.
+                  Tarkistus käy tuotepassiin lisäämäsi tiedot läpi ja vertaa niitä tuotteelle valittuun tuoteluokkaan ja
+                  markkina-alueeseen liittyviin EU-vaatimuksiin.
                 </p>
-                <p style={{ fontSize: '12px', color: 'var(--c-text-3)', lineHeight: 1.6, marginTop: '8px', marginBottom: 0 }}>
-                  Tarkistus ei korvaa viranomaisen tai asiantuntijan tekemää vaatimustenmukaisuuden arviointia.
-                </p>
+                <p style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.6, margin: '8px 0 0' }}>Näet tästä näkymästä:</p>
+                <ul style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.7, margin: '4px 0 0', paddingLeft: '18px' }}>
+                  <li>mitkä tiedot ovat kunnossa</li>
+                  <li>puuttuuko jotain, johon sinun pitää reagoida</li>
+                  <li>mitkä asiat kannattaa vielä tarkistaa</li>
+                </ul>
               </div>
 
-              {/* Score header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '12px', padding: '20px 24px' }}>
-                <div style={{ fontSize: '52px', fontWeight: 700, lineHeight: 1, color: scoreColor(compliance.score) }}>
-                  {compliance.score}
-                </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '6px' }}>Pistemäärä / 100</div>
-                  <span style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '999px', border: '1px solid', color: compliance.status === 'complete' ? 'var(--c-ok)' : '#d97706', borderColor: compliance.status === 'complete' ? 'var(--c-ok)' : '#d97706', background: compliance.status === 'complete' ? 'rgba(34,197,94,.08)' : 'rgba(217,119,6,.08)' }}>
-                    {scoreLabel(compliance.score, compliance.status)}
-                  </span>
-                  <div style={{ fontSize: '12px', color: 'var(--c-text-2)', marginTop: '8px', lineHeight: 1.5 }}>
-                    {(() => {
-                      const ok = compliance.passed.length;
-                      const todo = compliance.missing.length + compliance.warnings.length;
-                      return todo === 0
-                        ? `${ok} tarkistusta täyttyy. Ei avoimia kohtia.`
-                        : `${ok} tarkistusta täyttyy. ${todo} ${todo === 1 ? 'asia' : 'asiaa'} kannattaa vielä tarkistaa.`;
-                    })()}
+              {/* 2. Main semantic status (no numeric score in the customer view) */}
+              {(() => {
+                const blocking = compliance.missing.length > 0;
+                const autoPass = compliance.passed.length;
+                const autoTotal = compliance.passed.length + compliance.missing.length;
+                const review = compliance.warnings.length + compliance.info.length;
+                return (
+                  <div style={{ background: 'var(--c-surface)', border: '1px solid', borderColor: blocking ? '#d97706' : 'var(--c-ok)', borderRadius: '12px', padding: '20px 24px', marginBottom: '20px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                    <div style={{ fontSize: '22px', flexShrink: 0, lineHeight: 1.3 }}>{blocking ? '⚠️' : '✓'}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--c-text-1)', marginBottom: '6px' }}>
+                        {blocking ? 'Tuotepassissa on vielä täydennettävää' : 'Tuotepassin tiedot ovat kunnossa'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.7 }}>
+                        {autoTotal > 0 && <div>{autoPass}/{autoTotal} automaattista tarkistusta täyttyy.</div>}
+                        {blocking && <div>{compliance.missing.length} {compliance.missing.length === 1 ? 'kohta vaatii' : 'kohtaa vaatii'} toimenpiteen.</div>}
+                        {review > 0 && <div>{review} {review === 1 ? 'asia' : 'asiaa'} kannattaa vielä tarkistaa.</div>}
+                        {autoTotal === 0 && review === 0 && <div>Tälle tuotteelle ei ole toistaiseksi tarkistettavia kohtia.</div>}
+                      </div>
+                      <p style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '10px', marginBottom: 0, lineHeight: 1.5 }}>
+                        Tarkistus perustuu tuotteelle valittuun tuoteluokkaan, markkina-alueeseen ja tuotepassiin syötettyihin tietoihin.
+                      </p>
+                    </div>
+                    <button onClick={fetchCompliance} style={{ fontSize: '12px', padding: '7px 14px', border: '1px solid var(--c-border)', borderRadius: '8px', background: 'var(--c-surface-2)', cursor: 'pointer', color: 'var(--c-text-2)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      Päivitä tarkistus
+                    </button>
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '6px' }}>
-                    Pistemäärä kertoo, kuinka hyvin tuotepassiin syötetyt tiedot täyttävät järjestelmän tekemät tarkistukset.
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '6px' }}>
-                    {compliance.category
-                      ? `Luokka: ${CATEGORIES.find(c => c.id === `cat_${compliance.category?.toLowerCase()}`)?.label ?? compliance.category}`
-                      : 'Luokka: ei asetettu'}
-                    {' · '}
-                    Markkinat: {compliance.target_markets.join(', ')}
-                  </div>
-                </div>
-                <div style={{ marginLeft: 'auto' }}>
-                  <button onClick={fetchCompliance} style={{ fontSize: '12px', padding: '6px 12px', border: '1px solid var(--c-border)', borderRadius: '6px', background: 'var(--c-surface-2)', cursor: 'pointer', color: 'var(--c-text-2)' }}>
-                    ↺ Päivitä
-                  </button>
-                </div>
-              </div>
+                );
+              })()}
 
-              {/* verification_suggested banner */}
-              {compliance.verification_suggested && (
-                <div style={{ background: 'rgba(34,197,94,.08)', border: '1px solid var(--c-ok)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: 'var(--c-ok)' }}>
-                  Kaikki pakolliset vaatimukset täytetty ja pistemäärä ≥ 95. Admin voi merkitä tuotteen <strong>varmennetuksi</strong> Tila-kentästä.
-                </div>
-              )}
-
-              {/* No category warning */}
+              {/* No category note (informational, not alarming) */}
               {!compliance.category && (
-                <div style={{ background: 'var(--c-accent-dim)', border: '1px solid rgba(10,109,194,.18)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: 'var(--c-accent)' }}>
-                  Tuoteluokka ei ole asetettu — vain yleiset GPSR-säännöt ovat aktiivisia. Aseta luokka Perustiedot-välilehdellä aktivoidaksesi kategoriasäännöt.
+                <div style={{ background: 'var(--c-accent-dim)', border: '1px solid rgba(10,109,194,.18)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.6 }}>
+                  Tuoteluokkaa ei ole vielä valittu, joten tarkistuksessa huomioidaan vain kaikkia tuotteita koskevat yleiset vaatimukset.
+                  Valitse tuoteluokka Perustiedot-välilehdellä, niin tarkistus huomioi myös tuoteryhmäsi vaatimukset.
                 </div>
               )}
 
-              {/* Missing (errors) */}
+              {/* 3. Vaatii toimenpiteen (blocking failures — severity error) */}
               {compliance.missing.length > 0 && (
-                <Card title={`Puuttuvat tiedot — pakollinen (${compliance.missing.length})`}>
+                <Card title={`Vaatii toimenpiteen (${compliance.missing.length})`}>
                   {compliance.missing.map(m => (
-                    <div key={m.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <span style={{ color: 'var(--c-warn)', fontSize: '12px', flexShrink: 0 }}>✕</span>
+                    <div key={m.rule_code} style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                      <span style={{ color: 'var(--c-warn)', fontSize: '12px', flexShrink: 0, marginTop: '2px' }}>●</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '3px' }}>{ruleActionTitle(m.rule_code)}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '3px' }}>{ruleLabel(m.rule_code)}</div>
                         <div style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.5 }}>{m.message_fi}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--c-warn)', marginTop: '5px', fontWeight: 500 }}>Korjaa tämä tieto, jotta tuotepassi on täydellinen.</div>
                       </div>
                       {m.field && FIELD_TAB[m.field] && (
                         <button onClick={() => { setTab(FIELD_TAB[m.field!]); setMsg(null); window.scrollTo(0, 0); }} style={{ fontSize: '12px', color: 'var(--c-accent)', background: 'none', border: '1px solid var(--c-border)', borderRadius: '5px', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -650,19 +636,20 @@ export default function ProductPage() {
                 </Card>
               )}
 
-              {/* Warnings */}
-              {compliance.warnings.length > 0 && (
-                <Card title={`Varoitukset — suositeltava (${compliance.warnings.length})`}>
-                  {compliance.warnings.map(w => (
-                    <div key={w.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <span style={{ color: '#d97706', fontSize: '12px', flexShrink: 0 }}>⚠</span>
+              {/* 4. Kannattaa vielä tarkistaa (non-blocking: warnings + info) */}
+              {(compliance.warnings.length + compliance.info.length) > 0 && (
+                <Card title={`Kannattaa vielä tarkistaa (${compliance.warnings.length + compliance.info.length})`}>
+                  {[...compliance.warnings, ...compliance.info].map(w => (
+                    <div key={w.rule_code} style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                      <span style={{ color: 'var(--c-text-3)', fontSize: '12px', flexShrink: 0, marginTop: '2px' }}>○</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '3px' }}>{ruleActionTitle(w.rule_code)}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '3px' }}>{ruleLabel(w.rule_code)}</div>
                         <div style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.5 }}>{w.message_fi}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--c-text-3)', marginTop: '5px' }}>Tämä ei estä tuotepassin julkaisemista. Tarkista asia, jos se koskee tuotettasi.</div>
                       </div>
                       {w.field && FIELD_TAB[w.field] && (
-                        <button onClick={() => { setTab(FIELD_TAB[w.field!]); setMsg(null); window.scrollTo(0, 0); }} style={{ fontSize: '12px', color: '#d97706', background: 'none', border: '1px solid var(--c-border)', borderRadius: '5px', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                          Korjaa →
+                        <button onClick={() => { setTab(FIELD_TAB[w.field!]); setMsg(null); window.scrollTo(0, 0); }} style={{ fontSize: '12px', color: 'var(--c-text-2)', background: 'none', border: '1px solid var(--c-border)', borderRadius: '5px', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          Täydennä →
                         </button>
                       )}
                     </div>
@@ -670,21 +657,7 @@ export default function ProductPage() {
                 </Card>
               )}
 
-              {/* Info */}
-              {compliance.info.length > 0 && (
-                <Card title={`Huomioita (${compliance.info.length})`}>
-                  {compliance.info.map(i => (
-                    <div key={i.rule_code} style={{ padding: '10px 16px', borderBottom: '1px solid var(--c-border-dim)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                      <span style={{ color: 'var(--c-accent)', fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>ℹ</span>
-                      <div>
-                        <div style={{ fontSize: '13px', color: 'var(--c-text-2)', lineHeight: 1.5 }}>{i.message_fi}</div>
-                      </div>
-                    </div>
-                  ))}
-                </Card>
-              )}
-
-              {/* Passed */}
+              {/* 5. Kunnossa (passed) */}
               {compliance.passed.length > 0 && (
                 <Card title={`Kunnossa (${compliance.passed.length})`}>
                   <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
@@ -698,20 +671,29 @@ export default function ProductPage() {
                 </Card>
               )}
 
-              {/* Regulations applied */}
+              {/* 6. Mihin säädöksiin tarkistus perustuu? */}
               {compliance.regulations_applied.length > 0 && (
                 <div style={{ marginTop: '8px' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '4px' }}>Mihin sääntöihin tarkistus perustuu?</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-text-1)', marginBottom: '4px' }}>Mihin säädöksiin tarkistus perustuu?</div>
                   <p style={{ fontSize: '12px', color: 'var(--c-text-3)', lineHeight: 1.6, marginBottom: '10px', maxWidth: '620px' }}>Tuotteen luokan ja valittujen markkinoiden perusteella tarkistuksessa huomioidaan seuraavat EU-säädökset.</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {compliance.regulations_applied.map(r => (
-                      <span key={r.code} style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', border: '1px solid var(--c-border)', color: r.status === 'draft' ? '#d97706' : 'var(--c-text-2)', background: 'var(--c-surface)' }}>
-                        {r.code} {r.version}{r.status === 'draft' ? ' (luonnos)' : ''}
-                      </span>
+                      <div key={r.code} style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '8px', padding: '10px 14px' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--c-text-1)', fontWeight: 500 }}>{regulationLabel(r.code, r.name)}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--c-text-3)', marginTop: '2px' }}>{r.code} {r.version}{r.status === 'draft' ? ' · luonnos' : ''}</div>
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* 7. Subdued disclaimer */}
+              <div style={{ marginTop: '20px', borderTop: '1px solid var(--c-border-dim)', paddingTop: '12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--c-text-3)', marginBottom: '3px' }}>Tietoa tarkistuksesta</div>
+                <p style={{ fontSize: '11px', color: 'var(--c-text-3)', lineHeight: 1.6, margin: 0, maxWidth: '620px' }}>
+                  Tarkistus ei korvaa viranomaisen tai asiantuntijan tekemää vaatimustenmukaisuuden arviointia.
+                </p>
+              </div>
             </div>
           )}
         </div>

@@ -72,3 +72,25 @@ export function scoreLabel(score: number, status: string): string {
   if (score >= 60) return 'Täydennettävää';
   return 'Tarkistettavaa';
 }
+
+// Readable Finnish names for regulation codes (the API returns English names).
+// Presentation only — does not change which regulations apply.
+export const REGULATION_LABELS: Record<string, string> = {
+  GPSR: 'Yleinen tuoteturvallisuusasetus (GPSR)',
+  REACH: 'Kemikaaleja koskeva REACH-asetus',
+  ROHS: 'Vaarallisten aineiden rajoitus elektroniikassa (RoHS)',
+  WEEE: 'Sähkö- ja elektroniikkaromun direktiivi (WEEE)',
+  TEXTILE_LABELING: 'Tekstiilien kuitunimityksiä ja merkintöjä koskeva asetus',
+  ESPR_TEXTILES: 'Ekologisen suunnittelun asetus – tekstiilit (ESPR)',
+  ESPR_ELECTRONICS: 'Ekologisen suunnittelun asetus – elektroniikka (ESPR)',
+  ESPR_FURNITURE: 'Ekologisen suunnittelun asetus – huonekalut (ESPR)',
+  BATTERY_REG: 'EU:n akkuasetus',
+  EPR: 'Tuottajavastuu (EPR)',
+  EUDR: 'EU:n metsäkatoasetus (EUDR)',
+  CE: 'CE-merkintää koskevat vaatimukset',
+};
+
+// Finnish label for a regulation; falls back to the API's (English) name, then the code.
+export function regulationLabel(code: string, name?: string): string {
+  return REGULATION_LABELS[code] ?? name ?? code;
+}
