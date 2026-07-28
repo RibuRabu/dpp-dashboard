@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
 import { listAdminNfcOrders, fmtDate, NfcOrderAdmin } from '@/lib/api';
 import { nfcStatusLabel, nfcTagTypeLabel, nfcStatusColor, NFC_STATUS_LABELS } from '@/lib/nfc-labels';
+import { formatEur, orderTotal, NFC_UNIT_PRICE_EUR } from '@/lib/nfc-catalog';
 
 const FILTERS = ['', 'new', 'confirmed', 'processing', 'programmed', 'shipped', 'cancelled'];
 
@@ -35,7 +36,7 @@ export default async function NfcOrdersPage({ searchParams }: { searchParams: Pr
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface-2)' }}>
-              {['Tilaus', 'Tenant / Tuote', 'Tyyppi', 'Määrä', 'Tila', 'Luotu', ''].map(h => (
+              {['Tilaus', 'Tenant / Tuote', 'Tuotemalli', 'Määrä', 'Kpl-hinta', 'Yhteensä', 'Toimitustila', 'Luotu', ''].map(h => (
                 <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 500, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--c-text-3)' }}>{h}</th>
               ))}
             </tr>
@@ -52,6 +53,8 @@ export default async function NfcOrdersPage({ searchParams }: { searchParams: Pr
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--c-text-2)' }}>{nfcTagTypeLabel(o.tag_type)}</td>
                   <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '13px', color: 'var(--c-text-2)' }}>{o.quantity}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--c-text-3)', whiteSpace: 'nowrap' }}>{formatEur(NFC_UNIT_PRICE_EUR)}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--c-text-1)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatEur(orderTotal(o.quantity))}</td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', border: '1px solid', color: c.color, borderColor: c.borderColor }}>{nfcStatusLabel(o.status)}</span>
                   </td>
@@ -63,7 +66,7 @@ export default async function NfcOrdersPage({ searchParams }: { searchParams: Pr
               );
             })}
             {orders.length === 0 && (
-              <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', fontSize: '13px', color: 'var(--c-text-3)' }}>Ei tilauksia.</td></tr>
+              <tr><td colSpan={9} style={{ padding: '32px', textAlign: 'center', fontSize: '13px', color: 'var(--c-text-3)' }}>Ei tilauksia.</td></tr>
             )}
           </tbody>
         </table>

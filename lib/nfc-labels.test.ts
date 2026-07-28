@@ -18,9 +18,9 @@ describe('nfcStatusLabel', () => {
 });
 
 describe('nfcTagTypeLabel', () => {
-  it('maps tag types to Finnish labels', () => {
-    expect(nfcTagTypeLabel('standard')).toBe('Tavallinen NFC-tunniste');
-    expect(nfcTagTypeLabel('on_metal')).toBe('Metallipinnalle tarkoitettu NFC-tunniste');
+  it('maps the two backend enum slots to the Phase 7 SKU names', () => {
+    expect(nfcTagTypeLabel('standard')).toBe('NFC Standard');
+    expect(nfcTagTypeLabel('on_metal')).toBe('NFC Mini');
   });
 });
 

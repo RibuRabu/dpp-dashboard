@@ -1,6 +1,7 @@
 // Human-readable Finnish labels for NFC order enums. The raw status/tag_type
 // values (new/confirmed/…, standard/on_metal) are internal and must never be
 // shown to a customer or admin — always route through these helpers.
+import { nfcProductName } from './nfc-catalog';
 
 export type NfcStatus = 'new' | 'confirmed' | 'processing' | 'programmed' | 'shipped' | 'cancelled';
 export type NfcTagType = 'standard' | 'on_metal';
@@ -18,13 +19,10 @@ export function nfcStatusLabel(status: string): string {
   return NFC_STATUS_LABELS[status] ?? status;
 }
 
-export const NFC_TAG_TYPE_LABELS: Record<string, string> = {
-  standard: 'Tavallinen NFC-tunniste',
-  on_metal: 'Metallipinnalle tarkoitettu NFC-tunniste',
-};
-
+// Tag-type display names come from the product catalogue (Phase 7 SKUs):
+//   standard -> "NFC Standard", on_metal -> "NFC Mini".
 export function nfcTagTypeLabel(tagType: string): string {
-  return NFC_TAG_TYPE_LABELS[tagType] ?? tagType;
+  return nfcProductName(tagType);
 }
 
 // Badge colours mirroring the tenant/product status pills used elsewhere.

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { getAdminNfcOrder, updateNfcOrderStatus, apiErrMsg, fmtDate, NfcOrderAdmin } from '@/lib/api';
 import { nfcStatusLabel, nfcTagTypeLabel, nfcStatusColor, nfcNextStatuses, NfcStatus } from '@/lib/nfc-labels';
+import { formatEur, orderTotal, NFC_UNIT_PRICE_EUR } from '@/lib/nfc-catalog';
 
 const inp: React.CSSProperties = { width: '100%', fontSize: '14px', color: 'var(--c-text-1)', background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', borderRadius: '6px', padding: '7px 10px', outline: 'none', fontFamily: 'inherit' };
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
@@ -85,8 +86,10 @@ export default function NfcOrderDetailPage() {
             <Line k="Tuote" v={<>{order.product_name ?? '—'}{order.product_status ? ` (${order.product_status})` : ''}</>} />
             <Line k="Ohjelmoitava osoite" v={<a href={order.programming_url_snapshot} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-accent)' }}>{order.programming_url_snapshot}</a>} mono />
             <Line k="Julkinen tunniste" v={order.public_slug_snapshot} mono />
-            <Line k="Tunnistetyyppi" v={nfcTagTypeLabel(order.tag_type)} />
+            <Line k="Tuotemalli" v={nfcTagTypeLabel(order.tag_type)} />
             <Line k="Määrä" v={`${order.quantity} kpl`} />
+            <Line k="Kappalehinta" v={formatEur(NFC_UNIT_PRICE_EUR)} />
+            <Line k="Kokonaishinta (ilman toimitusta)" v={formatEur(orderTotal(order.quantity))} />
           </div>
 
           <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
