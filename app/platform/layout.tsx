@@ -7,6 +7,7 @@ const navLinks = [
   { href: '/platform', label: 'Yleiskatsaus', exact: true },
   { href: '/platform/tenants', label: 'Tenantit' },
   { href: '/platform/products/unclaimed', label: 'Lunastamatta' },
+  { href: '/platform/nfc-orders', label: 'NFC-tilaukset' },
   { href: '/platform/billing', label: 'Laskutus' },
 ];
 

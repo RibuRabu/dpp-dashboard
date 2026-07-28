@@ -56,6 +56,15 @@ export function apiErrMsg(e: unknown): string {
       not_found: 'Tuotetta ei löydy.',
       already_claimed: 'Tuote on jo yhdistetty toiseen tenantiin.',
       invalid_compliance_status: 'Virheellinen vaatimustenmukaisuusstatus.',
+      invalid_tag_type: 'Valitse kelvollinen NFC-tunnisteen tyyppi.',
+      invalid_quantity: 'Anna kelvollinen kappalemäärä (vähintään 1).',
+      recipient_name_required: 'Vastaanottajan nimi on pakollinen.',
+      address_line_required: 'Toimitusosoite on pakollinen.',
+      postal_code_required: 'Postinumero on pakollinen.',
+      city_required: 'Kaupunki on pakollinen.',
+      invalid_country_code: 'Anna kaksikirjaiminen maakoodi (esim. FI).',
+      product_archived: 'Arkistoidulle tuotteelle ei voi tilata NFC-tunnisteita.',
+      invalid_transition: 'Tilasiirtymä ei ole sallittu.',
     };
     return map[body.error ?? ''] ?? `Virhe ${e.status}: ${JSON.stringify(e.body)}`;
   }
@@ -184,6 +193,58 @@ export interface TenantUser {
   joined_at: string;
 }
 
+// ── NFC orders ───────────────────────────────────────────────────────────────
+
+// Customer-facing order (admin_note is never returned by the API).
+export interface NfcOrder {
+  id: string;
+  order_number: string;
+  product_id: string;
+  public_slug: string;
+  programming_url: string;
+  tag_type: string;
+  quantity: number;
+  status: string;
+  recipient_name: string;
+  company_name: string | null;
+  address_line: string;
+  postal_code: string;
+  city: string;
+  country_code: string;
+  customer_note: string | null;
+  tracking_code: string | null;
+  tracking_url: string | null;
+  created_at: string;
+  updated_at: string;
+  confirmed_at: string | null;
+  programmed_at: string | null;
+  shipped_at: string | null;
+  cancelled_at: string | null;
+}
+
+// Admin-side order (adds fulfilment fields + joined tenant/product names).
+export interface NfcOrderAdmin extends NfcOrder {
+  tenant_id: string;
+  tenant_name: string | null;
+  product_name: string | null;
+  product_status?: string;
+  public_slug_snapshot: string;
+  programming_url_snapshot: string;
+  admin_note: string | null;
+}
+
+export interface NfcOrderInput {
+  tag_type: 'standard' | 'on_metal';
+  quantity: number;
+  recipient_name: string;
+  company_name?: string;
+  address_line: string;
+  postal_code: string;
+  city: string;
+  country_code: string;
+  customer_note?: string;
+}
+
 // ── Tenant API ─────────────────────────────────────────────────────────────
 
 function orgHeader(orgId?: string | null): Record<string, string> {
@@ -222,6 +283,17 @@ export async function regenerateShareLink(token: string, slug: string, orgId?: s
 
 export async function claimProduct(token: string, ownerToken: string, orgId?: string | null): Promise<{ slug: string }> {
   return req(token, `/api/tenant/claim/${ownerToken}`, { method: 'POST', headers: orgHeader(orgId) });
+}
+
+// NFC orders — customer side. The server derives tenant/product/URL from the
+// authenticated context + slug; the body carries only order details.
+export async function createNfcOrder(token: string, slug: string, body: NfcOrderInput, orgId?: string | null): Promise<{ order: NfcOrder; product_unpublished: boolean }> {
+  return req(token, `/api/tenant/product/${slug}/nfc-orders`, { method: 'POST', body: JSON.stringify(body), headers: orgHeader(orgId) });
+}
+
+export async function listNfcOrders(token: string, slug: string, orgId?: string | null): Promise<NfcOrder[]> {
+  const res = await req<{ orders: NfcOrder[] }>(token, `/api/tenant/product/${slug}/nfc-orders`, { headers: orgHeader(orgId) });
+  return res.orders;
 }
 
 export async function getCompliance(productUid: string): Promise<ComplianceResult> {
@@ -278,6 +350,24 @@ export async function adminCreateProductForTenant(
   body: { product_name: string; product_type?: string }
 ): Promise<{ id: string; product_uid: string; public_slug: string; owner_token: string; passport_uid: string }> {
   return req(token, `/api/admin/tenant/${tenantId}/product`, { method: 'POST', body: JSON.stringify(body) });
+}
+
+// NFC orders — platform admin side.
+export async function listAdminNfcOrders(token: string, status?: string): Promise<{ orders: NfcOrderAdmin[] }> {
+  const q = status ? `?status=${encodeURIComponent(status)}` : '';
+  return req(token, `/api/admin/nfc-orders${q}`);
+}
+
+export async function getAdminNfcOrder(token: string, id: string): Promise<{ order: NfcOrderAdmin }> {
+  return req(token, `/api/admin/nfc-orders/${id}`);
+}
+
+export async function updateNfcOrderStatus(
+  token: string,
+  id: string,
+  body: { status: string; admin_note?: string; tracking_code?: string; tracking_url?: string }
+): Promise<{ order: NfcOrderAdmin }> {
+  return req(token, `/api/admin/nfc-orders/${id}/status`, { method: 'POST', body: JSON.stringify(body) });
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getProduct, updateProduct, deleteProduct, regenerateShareLink, getCompliance, parseJson, statusLabel, statusColor, fmtDate, Product, ComplianceResult, ApiError, NetworkError } from '@/lib/api';
 import PublicLinkQr from '@/components/PublicLinkQr';
 import VisibilityNote from '@/components/VisibilityNote';
+import NfcOrderCard from '@/components/NfcOrderCard';
 import { ruleLabel, regulationLabel } from '@/lib/compliance-labels';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
@@ -505,11 +506,23 @@ export default function ProductPage() {
       {/* ── Jakaminen ── */}
       {tab === 'Jakaminen' && (
         <div role="tabpanel" id="tabpanel-Jakaminen" aria-labelledby="tab-Jakaminen">
-          <Card title="Julkinen tuotepassi">
+          {/* 1. Primary: the public passport + QR (works on its own) */}
+          <Card title="🌐 Julkinen tuotepassi ja QR-koodi">
             <PublicLinkQr apiBase={API} slug={product.public_slug} />
           </Card>
 
-          <Card title="Muokkauslinkki">
+          {/* 2. Secondary/optional: order physical NFC tags for the same passport */}
+          <Card title="📱 Tilaa ohjelmoitu NFC-tunniste (valinnainen)">
+            <NfcOrderCard
+              slug={product.public_slug}
+              productName={product.product_name}
+              apiBase={API}
+              productActive={product.status === 'active'}
+            />
+          </Card>
+
+          {/* 3. Private: the owner/edit link — never share publicly */}
+          <Card title="🔒 Muokkauslinkki">
             <div style={{ padding: '16px' }}>
               <p style={{ fontSize: '13px', color: 'var(--c-warn)', marginBottom: '10px', lineHeight: 1.6, fontWeight: 500 }}>
                 🔒 Älä jaa tätä linkkiä julkisesti. Linkin saanut henkilö voi päästä tuotteen omistajan näkymään ja muokata tuotetta.
