@@ -5,7 +5,7 @@ import { createNfcOrder, listNfcOrders, apiErrMsg, fmtDate, NfcOrder, NfcOrderIn
 import { nfcStatusLabel, nfcTagTypeLabel, nfcStatusColor } from '@/lib/nfc-labels';
 import {
   NFC_PRODUCTS, NFC_UNIT_PRICE_EUR, NFC_MIN_ORDER_QTY, NFC_MAX_ORDER_QTY,
-  NfcTagTypeValue, formatEur, orderTotal, orderTotalLine, nfcProductByTagType,
+  OrderableTagType, formatEur, orderTotal, orderTotalLine, nfcProductByTagType,
 } from '@/lib/nfc-catalog';
 
 // Customer-facing card to order physical NFC tags pre-programmed to open this
@@ -36,7 +36,7 @@ export default function NfcOrderCard({ slug, productName, apiBase, productActive
   const publicUrl = `${apiBase}/p/${slug}`;
 
   const [orders, setOrders] = useState<NfcOrder[]>([]);
-  const [tagType, setTagType] = useState<NfcTagTypeValue>('standard');
+  const [tagType, setTagType] = useState<OrderableTagType>('standard');
   const [quantity, setQuantity] = useState<number>(NFC_MIN_ORDER_QTY);
   const [addr, setAddr] = useState({ recipient_name: '', company_name: '', address_line: '', postal_code: '', city: '', country_code: 'FI', customer_note: '' });
   const [step, setStep] = useState<'form' | 'review'>('form');

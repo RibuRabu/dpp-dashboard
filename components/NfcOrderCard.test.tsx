@@ -94,9 +94,9 @@ describe('NfcOrderCard — Phase 7 commercial order', () => {
     expect(screen.queryByDisplayValue(`${API}/p/esimerkki`)).toBeNull();
   });
 
-  it('reviews then submits NFC Mini as tag_type on_metal, showing the order number', async () => {
+  it('reviews then submits NFC Mini as the real tag_type "mini", showing the order number', async () => {
     createNfcOrder.mockResolvedValue({
-      order: { id: 'o1', order_number: 'NFC-2026-000007', status: 'new', quantity: 10, tag_type: 'on_metal', created_at: '2026-07-28', public_slug: 'esimerkki' },
+      order: { id: 'o1', order_number: 'NFC-2026-000007', status: 'new', quantity: 10, tag_type: 'mini', created_at: '2026-07-28', public_slug: 'esimerkki' },
       product_unpublished: false,
     });
     render(<NfcOrderCard slug="esimerkki" productName="Merinovilla" apiBase={API} productActive />);
@@ -114,7 +114,7 @@ describe('NfcOrderCard — Phase 7 commercial order', () => {
     await waitFor(() => expect(createNfcOrder).toHaveBeenCalledTimes(1));
     const [, slugArg, body] = createNfcOrder.mock.calls[0];
     expect(slugArg).toBe('esimerkki');
-    expect(body.tag_type).toBe('on_metal');   // NFC Mini -> backend slot
+    expect(body.tag_type).toBe('mini');   // NFC Mini -> real value, no fake mapping
     expect(body.quantity).toBe(10);
     expect(body).not.toHaveProperty('tenant_id');
     expect(body).not.toHaveProperty('product_id');

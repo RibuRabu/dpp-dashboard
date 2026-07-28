@@ -1,22 +1,32 @@
 import { describe, it, expect } from 'vitest';
 import {
-  NFC_PRODUCTS, NFC_UNIT_PRICE_EUR, NFC_MIN_ORDER_QTY,
+  NFC_PRODUCTS, NFC_UNIT_PRICE_EUR, NFC_MIN_ORDER_QTY, NFC_TAG_TYPE_LABELS,
   formatEur, orderTotal, orderTotalLine, nfcProductByTagType, nfcProductName,
 } from './nfc-catalog';
 
 describe('NFC catalogue', () => {
-  it('offers exactly two SKUs — NFC Mini and NFC Standard — and nothing else', () => {
+  it('offers exactly two orderable SKUs — NFC Mini and NFC Standard', () => {
     expect(NFC_PRODUCTS).toHaveLength(2);
     expect(NFC_PRODUCTS.map(p => p.name).sort()).toEqual(['NFC Mini', 'NFC Standard']);
   });
 
-  it('maps the SKUs onto the existing backend tag_type slots', () => {
-    expect(nfcProductByTagType('on_metal')?.name).toBe('NFC Mini');
+  it('uses the REAL backend tag_type values (no fake on_metal mapping)', () => {
+    expect(NFC_PRODUCTS.map(p => p.tagType).sort()).toEqual(['mini', 'standard']);
+    expect(nfcProductByTagType('mini')?.name).toBe('NFC Mini');
     expect(nfcProductByTagType('standard')?.name).toBe('NFC Standard');
+    // on_metal is NOT an orderable SKU (only mini/standard are offered today)
+    expect(nfcProductByTagType('on_metal')).toBeUndefined();
+  });
+
+  it('has a single label map covering all three tag types', () => {
+    expect(NFC_TAG_TYPE_LABELS.mini).toBe('NFC Mini');
+    expect(NFC_TAG_TYPE_LABELS.standard).toBe('NFC Standard');
+    expect(NFC_TAG_TYPE_LABELS.on_metal).toBe('Metallitunniste');
+    expect(nfcProductName('on_metal')).toBe('Metallitunniste');
   });
 
   it('both SKUs are NTAG213 / 144 tavua with the specified diameters', () => {
-    const mini = nfcProductByTagType('on_metal')!;
+    const mini = nfcProductByTagType('mini')!;
     const std = nfcProductByTagType('standard')!;
     expect(mini.chip).toBe('NTAG213');
     expect(std.chip).toBe('NTAG213');

@@ -234,7 +234,7 @@ export interface NfcOrderAdmin extends NfcOrder {
 }
 
 export interface NfcOrderInput {
-  tag_type: 'standard' | 'on_metal';
+  tag_type: 'mini' | 'standard';
   quantity: number;
   recipient_name: string;
   company_name?: string;

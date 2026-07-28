@@ -18,9 +18,10 @@ describe('nfcStatusLabel', () => {
 });
 
 describe('nfcTagTypeLabel', () => {
-  it('maps the two backend enum slots to the Phase 7 SKU names', () => {
+  it('maps every real tag_type to its Finnish product label', () => {
+    expect(nfcTagTypeLabel('mini')).toBe('NFC Mini');
     expect(nfcTagTypeLabel('standard')).toBe('NFC Standard');
-    expect(nfcTagTypeLabel('on_metal')).toBe('NFC Mini');
+    expect(nfcTagTypeLabel('on_metal')).toBe('Metallitunniste');
   });
 });
 

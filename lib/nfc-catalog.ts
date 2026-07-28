@@ -1,23 +1,32 @@
 // NFC product catalogue — the single source of truth for what a customer can
-// order, the price, and the minimum order. Presentation/commerce only; there is
-// no payment integration in this phase.
+// order, the price, the minimum order, and the display name of every tag type.
+// Presentation/commerce only; there is no payment integration in this phase.
 //
-// Backend mapping note: the Worker's nfc_orders.tag_type accepts exactly two
-// values ('standard', 'on_metal'). Phase 7 defines exactly two SKUs, so we map
-// them onto those existing slots WITHOUT changing the Worker API or database:
-//   NFC Standard  -> tag_type 'standard'   (Ø38 mm)
-//   NFC Mini      -> tag_type 'on_metal'   (Ø22 mm)
-// The raw enum is never shown to a user; every label goes through this catalogue.
-// A future phase could rename the backend enum to 'mini'/'standard' for clarity.
+// tag_type is now the REAL product model (Phase 7.5): the dashboard sends 'mini'
+// or 'standard' directly — no translation layer, no fake mapping. 'on_metal'
+// (Metallitunniste) is a known type used by historical/future orders; it is not
+// offered as an orderable SKU yet, but it has a display label so admin views
+// render it correctly.
 
 export const NFC_UNIT_PRICE_EUR = 3.0;   // € per tag — same for both SKUs
 export const NFC_MIN_ORDER_QTY = 10;     // minimum tags per order
 export const NFC_MAX_ORDER_QTY = 10000;  // upper bound (mirrors the Worker)
 
-export type NfcTagTypeValue = 'standard' | 'on_metal';
+// Every tag type the backend can hold. Keep in sync with the Worker's NFC_TAG_TYPES.
+export type NfcTagTypeValue = 'mini' | 'standard' | 'on_metal';
+// The subset a customer can actually order today.
+export type OrderableTagType = 'mini' | 'standard';
+
+// Single label map for all tag types (Phase 7.5 requirement). Admin and customer
+// views resolve display names through this map only.
+export const NFC_TAG_TYPE_LABELS: Record<string, string> = {
+  mini: 'NFC Mini',
+  standard: 'NFC Standard',
+  on_metal: 'Metallitunniste',
+};
 
 export interface NfcProduct {
-  tagType: NfcTagTypeValue; // backend enum slot this SKU maps to
+  tagType: OrderableTagType; // the real backend value this SKU sends
   name: string;
   chip: string;
   memory: string;
@@ -27,8 +36,8 @@ export interface NfcProduct {
 
 export const NFC_PRODUCTS: NfcProduct[] = [
   {
-    tagType: 'on_metal',
-    name: 'NFC Mini',
+    tagType: 'mini',
+    name: NFC_TAG_TYPE_LABELS.mini,
     chip: 'NTAG213',
     memory: '144 tavua',
     diameter: 'Ø22 mm',
@@ -36,7 +45,7 @@ export const NFC_PRODUCTS: NfcProduct[] = [
   },
   {
     tagType: 'standard',
-    name: 'NFC Standard',
+    name: NFC_TAG_TYPE_LABELS.standard,
     chip: 'NTAG213',
     memory: '144 tavua',
     diameter: 'Ø38 mm',
@@ -48,10 +57,10 @@ export function nfcProductByTagType(tagType: string): NfcProduct | undefined {
   return NFC_PRODUCTS.find(p => p.tagType === tagType);
 }
 
-// Display name for a stored tag_type. Falls back to the raw value only if an
-// unknown enum ever appears (defensive; should not happen).
+// Display name for a stored tag_type, via the single label map. Falls back to the
+// raw value only if an unknown enum ever appears (defensive).
 export function nfcProductName(tagType: string): string {
-  return nfcProductByTagType(tagType)?.name ?? tagType;
+  return NFC_TAG_TYPE_LABELS[tagType] ?? tagType;
 }
 
 // fi-FI currency formatting, e.g. 30 -> "30,00 €", 3 -> "3,00 €".
